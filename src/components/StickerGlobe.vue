@@ -5,7 +5,6 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { stickerList, type StickerData } from '@/data/stickers'
 
 const containerRef = ref<HTMLDivElement>()
-const tooltipRef = ref<HTMLDivElement>()
 const tooltipVisible = ref(false)
 const tooltipData = ref<StickerData | null>(null)
 const tooltipPos = ref({ x: 0, y: 0 })
@@ -27,7 +26,6 @@ let tooltipTimer: ReturnType<typeof setTimeout> | null = null
 const SPHERE_RADIUS = 4.5
 const STICKER_W = 0.55
 const STICKER_H = 0.55
-const STICKER_GAP = 0.08
 
 function fibonacciSphere(samples: number): THREE.Vector3[] {
   const points: THREE.Vector3[] = []
@@ -183,11 +181,27 @@ function createStickerMesh(data: StickerData, position: THREE.Vector3): THREE.Me
 
   mesh.position.copy(position)
 
-  // 让便利贴朝向球心外侧，并略微随机倾斜
+  // 计算法线方向（球心向外）
   const normal = position.clone().normalize()
-  mesh.lookAt(normal.clone().multiplyScalar(2))
 
-  // 轻微随机倾斜错落
+  // 使用四元数让便利贴精确面朝法线方向，同时保证文字正立
+  // 构建局部坐标系：normal 为 Z 轴（面朝方向），up 为世界 Y 轴
+  const quaternion = new THREE.Quaternion()
+  const up = new THREE.Vector3(0, 1, 0)
+  const m4 = new THREE.Matrix4()
+
+  // 特殊情况：normal 与 up 平行时（北极/南极），使用不同的 up
+  if (Math.abs(normal.dot(up)) > 0.999) {
+    const altUp = new THREE.Vector3(1, 0, 0)
+    m4.lookAt(position.clone().add(normal), position, altUp)
+  } else {
+    m4.lookAt(position.clone().add(normal), position, up)
+  }
+
+  quaternion.setFromRotationMatrix(m4)
+  mesh.quaternion.copy(quaternion)
+
+  // 轻微随机倾斜错落（在局部坐标系中）
   mesh.rotateZ((Math.random() - 0.5) * 0.3)
   mesh.rotateY((Math.random() - 0.5) * 0.3)
 
@@ -461,7 +475,7 @@ function onClick(event: MouseEvent) {
 function animate() {
   animationId = requestAnimationFrame(animate)
 
-  const delta = clock.getDelta()
+  clock.getDelta()
 
   controls.update()
 
@@ -507,7 +521,6 @@ onUnmounted(() => {
     <Transition name="tooltip-fade">
       <div
         v-if="tooltipVisible && tooltipData"
-        ref="tooltipRef"
         class="sticker-tooltip"
         :style="{
           left: tooltipPos.x + 'px',
