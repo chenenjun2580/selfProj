@@ -9,6 +9,10 @@ const tooltipVisible = ref(false)
 const tooltipData = ref<StickerData | null>(null)
 const tooltipPos = ref({ x: 0, y: 0 })
 
+const emit = defineEmits<{
+  (e: 'zoom', distance: number): void
+}>()
+
 let scene: THREE.Scene
 let camera: THREE.PerspectiveCamera
 let renderer: THREE.WebGLRenderer
@@ -24,8 +28,8 @@ let hoveredMesh: THREE.Mesh | null = null
 let tooltipTimer: ReturnType<typeof setTimeout> | null = null
 
 const SPHERE_RADIUS = 4.5
-const STICKER_W = 0.55
-const STICKER_H = 0.55
+const STICKER_W = 0.7
+const STICKER_H = 0.9
 
 function fibonacciSphere(samples: number): THREE.Vector3[] {
   const points: THREE.Vector3[] = []
@@ -125,15 +129,15 @@ function createStickerTexture(data: StickerData): THREE.CanvasTexture {
   ctx.fillText(data.emoji, size / 2, 80)
 
   // 分类标签
-  ctx.font = 'bold 13px "PingFang SC", "Microsoft YaHei", sans-serif'
-  ctx.fillStyle = '#999'
+  ctx.font = 'bold 15px "PingFang SC", "Microsoft YaHei", sans-serif'
+  ctx.fillStyle = 'black'
   ctx.textAlign = 'center'
   ctx.textBaseline = 'middle'
   ctx.fillText(data.category, size / 2, 118)
 
   // 文字
   ctx.font = 'bold 20px "PingFang SC", "Microsoft YaHei", sans-serif'
-  ctx.fillStyle = '#444'
+  ctx.fillStyle = 'black'
   ctx.textAlign = 'center'
   ctx.textBaseline = 'middle'
   ctx.fillText(data.text, size / 2, 152)
@@ -150,7 +154,7 @@ function createStickerTexture(data: StickerData): THREE.CanvasTexture {
   ctx.lineTo(x, y + r)
   ctx.quadraticCurveTo(x, y, x + r, y)
   ctx.closePath()
-  ctx.strokeStyle = 'rgba(180,160,140,0.25)'
+  ctx.strokeStyle = 'rgba(180,160,140,0.35)'
   ctx.lineWidth = 1.5
   ctx.stroke()
 
@@ -246,9 +250,8 @@ function createGlowSprite(): THREE.Sprite {
 function initScene() {
   if (!containerRef.value) return
 
-  // 场景
+  // 场景 - 透明背景，让星空背景透过来
   scene = new THREE.Scene()
-  scene.background = new THREE.Color('#f8f8f8')
 
   // 相机
   camera = new THREE.PerspectiveCamera(
@@ -479,8 +482,8 @@ function animate() {
 
   controls.update()
 
-  // 更新每张便利贴使其始终面向相机（billboarding light）
-  // 不强制billboard，保持原有朝向，这样更有立体感
+  // 发射缩放距离，让搜索框跟随球体缩放移动
+  emit('zoom', camera.position.distanceTo(controls.target))
 
   renderer.render(scene, camera)
 }
@@ -534,10 +537,10 @@ onUnmounted(() => {
     </Transition>
 
     <!-- 标题 -->
-    <div class="globe-title">
+    <!-- <div class="globe-title">
       <h1>文案素材导航</h1>
       <p>拖拽旋转 · 悬停预览 · 点击进入</p>
-    </div>
+    </div> -->
   </div>
 </template>
 
@@ -547,8 +550,9 @@ onUnmounted(() => {
   width: 100%;
   height: 100vh;
   overflow: hidden;
-  background: linear-gradient(180deg, #fafafa 0%, #f0f0f0 100%);
+  background: transparent;
   cursor: grab;
+  z-index: 1;
 }
 
 .globe-wrapper:active {
