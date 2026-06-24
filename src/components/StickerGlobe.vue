@@ -11,6 +11,7 @@ const tooltipPos = ref({ x: 0, y: 0 })
 
 const emit = defineEmits<{
   (e: 'zoom', distance: number): void
+  (e: 'sticker-click', data: StickerData): void
 }>()
 
 let scene: THREE.Scene
@@ -26,6 +27,17 @@ let hoveredMesh: THREE.Mesh | null = null
 
 // Tooltip debounce
 let tooltipTimer: ReturnType<typeof setTimeout> | null = null
+
+// 搜索动画状态
+let searchAnimTarget: THREE.Mesh | null = null
+let searchAnimPhase: 'idle' | 'rotating' | 'zooming' | 'holding' | 'reversing' = 'idle'
+let searchAnimStartTime = 0
+let searchAnimCamStart: THREE.Vector3 | null = null
+let searchAnimCamTarget: THREE.Vector3 | null = null
+let searchAnimTargetOriginalPos: THREE.Vector3 | null = null
+let searchAnimTargetNormal: THREE.Vector3 | null = null
+let searchAnimTargetOriginalScale: THREE.Vector3 | null = null
+let searchAnimTargetOriginalOpacity = 0
 
 const SPHERE_RADIUS = 4.5
 const STICKER_W = 0.7
@@ -441,39 +453,213 @@ function onClick(event: MouseEvent) {
     const obj = intersects[0].object as THREE.Mesh
     const data = obj.userData as any
     if (data.stickerData) {
-      // 点击回弹动画
-      const originalScale = obj.scale.clone()
-      const targetScale = originalScale.clone().multiplyScalar(0.85)
-      const duration = 150
-      const startTime = performance.now()
-
-      function bounceAnim(time: number) {
-        const elapsed = time - startTime
-        const progress = Math.min(elapsed / duration, 1)
-        // Ease out back
-        const c1 = 1.70158
-        const c3 = c1 + 1
-        const val = 1 + c3 * Math.pow(progress - 1, 3) + c1 * Math.pow(progress - 1, 2)
-
-        if (progress < 0.5) {
-          obj.scale.lerpVectors(targetScale, originalScale, progress * 2)
-        } else {
-          const p = (progress - 0.5) * 2
-          obj.scale.lerpVectors(originalScale, targetScale, 1 - p + val * 0.3)
-        }
-
-        if (progress < 1) {
-          requestAnimationFrame(bounceAnim)
-        } else {
-          obj.scale.copy(originalScale)
-        }
-      }
-      requestAnimationFrame(bounceAnim)
-
-      console.log('Clicked:', data.stickerData.text)
+      // 发射点击事件给父组件处理跳转
+      emit('sticker-click', data.stickerData as StickerData)
     }
   }
 }
+
+// 搜索便签
+function searchSticker(keyword: string) {
+  if (!keyword.trim()) return
+
+  // 如果正在动画中，先取消
+  cancelSearchAnim()
+
+  // 查找匹配的便签（模糊匹配 text 字段）
+  const lowerKeyword = keyword.trim().toLowerCase()
+  let targetMesh: THREE.Mesh | null = null
+
+  for (const mesh of stickerMeshes) {
+    const data = mesh.userData.stickerData as StickerData
+    if (data.text.toLowerCase().includes(lowerKeyword)) {
+      targetMesh = mesh
+      break
+    }
+  }
+
+  if (!targetMesh) {
+    console.log('未找到匹配的便签:', keyword)
+    return
+  }
+
+  const userData = targetMesh.userData as any
+  const normal = userData.normal as THREE.Vector3
+  const pos = targetMesh.position.clone()
+
+  // 获取便签当前的实际正面方向（PlaneGeometry 默认正面是 +Z 方向）
+  const forward = new THREE.Vector3(0, 0, 1)
+  forward.applyQuaternion(targetMesh.quaternion).normalize()
+
+  // 相机目标位置：在便签正面方向上，距离球心一定距离
+  // 先算出便签在球面上的大致位置，相机沿便签正面方向拉远
+  const stickerWorldPos = normal.clone().multiplyScalar(SPHERE_RADIUS)
+  const targetCamPos = stickerWorldPos.clone().add(forward.clone().multiplyScalar(11))
+
+  searchAnimTarget = targetMesh
+  searchAnimPhase = 'rotating'
+  searchAnimStartTime = performance.now()
+  searchAnimCamStart = camera.position.clone()
+  searchAnimCamTarget = targetCamPos
+  searchAnimTargetOriginalPos = pos.clone()
+  searchAnimTargetNormal = normal.clone()
+  searchAnimTargetOriginalScale = targetMesh.scale.clone()
+  searchAnimTargetOriginalOpacity = (targetMesh.material as THREE.MeshStandardMaterial).opacity
+
+  // 暂停自动旋转
+  controls.autoRotate = false
+}
+
+function cancelSearchAnim() {
+  if (searchAnimTarget) {
+    const userData = searchAnimTarget.userData as any
+    // 恢复便签
+    searchAnimTarget.scale.copy(searchAnimTargetOriginalScale || new THREE.Vector3(1, 1, 1))
+    if (userData.originalPosition) {
+      searchAnimTarget.position.copy(userData.originalPosition)
+    }
+    ;(searchAnimTarget.material as THREE.MeshStandardMaterial).opacity = searchAnimTargetOriginalOpacity || 1
+    ;(searchAnimTarget.material as THREE.MeshStandardMaterial).emissive.set('#000000')
+    ;(searchAnimTarget.material as THREE.MeshStandardMaterial).emissiveIntensity = 0
+
+    searchAnimTarget = null
+  }
+  searchAnimPhase = 'idle'
+  searchAnimCamStart = null
+  searchAnimCamTarget = null
+  searchAnimTargetOriginalPos = null
+  searchAnimTargetNormal = null
+  searchAnimTargetOriginalScale = null
+}
+
+function updateSearchAnim(now: number) {
+  if (!searchAnimTarget || searchAnimPhase === 'idle') return
+  if (!searchAnimCamStart || !searchAnimCamTarget || !searchAnimTargetNormal) return
+
+  const elapsed = (now - searchAnimStartTime) / 1000 // 秒
+
+  if (searchAnimPhase === 'rotating') {
+    const duration = 1.2 // 旋转阶段持续1.2秒
+    let t = Math.min(elapsed / duration, 1)
+
+    // easeInOutCubic
+    t = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2
+
+    // 插值相机位置
+    camera.position.lerpVectors(searchAnimCamStart, searchAnimCamTarget, t)
+
+    // 让相机看向球心
+    camera.lookAt(0, 0, 0)
+    controls.target.set(0, 0, 0)
+    controls.update()
+
+    // 高亮目标便签
+    const mat = searchAnimTarget.material as THREE.MeshStandardMaterial
+    mat.emissive.set('#ffffff')
+    mat.emissiveIntensity = 0.15 + t * 0.3
+
+    if (t >= 1) {
+      // 旋转完成，进入放大阶段
+      searchAnimPhase = 'zooming'
+      searchAnimStartTime = now
+      // 记录当前便签的 scale 作为放大起点
+      searchAnimTargetOriginalScale = searchAnimTarget.scale.clone()
+      // 让便签略微浮出
+      if (searchAnimTargetOriginalPos && searchAnimTargetNormal) {
+        searchAnimTarget.position.copy(
+          searchAnimTargetOriginalPos.clone().add(searchAnimTargetNormal.clone().multiplyScalar(0.15))
+        )
+      }
+    }
+  } else if (searchAnimPhase === 'zooming') {
+    const duration = 0.8 // 放大阶段持续0.8秒
+    let t = Math.min(elapsed / duration, 1)
+
+    // easeOutBack - 超过目标后回弹
+    const c1 = 1.70158
+    const c3 = c1 + 1
+    t = 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2)
+
+    // 放大到 1.6x
+    const fromScale = searchAnimTargetOriginalScale?.x || 1
+    const toScale = 1.6
+    const s = fromScale + (toScale - fromScale) * t
+    searchAnimTarget.scale.set(s, s, s)
+
+    // 增加不透明度，让它更突出
+    const mat = searchAnimTarget.material as THREE.MeshStandardMaterial
+    mat.opacity = Math.min(1, (searchAnimTargetOriginalOpacity || 0.9) + t * 0.15)
+    mat.emissiveIntensity = 0.45
+
+    if (t >= 1) {
+      // 放大完成，保持片刻
+      searchAnimPhase = 'holding'
+      searchAnimStartTime = now
+    }
+  } else if (searchAnimPhase === 'holding') {
+    // 保持放大状态 2 秒
+    if (elapsed > 2.0) {
+      // 开始反向恢复
+      searchAnimPhase = 'reversing'
+      searchAnimStartTime = now
+      searchAnimTargetOriginalScale = searchAnimTarget.scale.clone()
+    }
+  } else if (searchAnimPhase === 'reversing') {
+    const duration = 0.6
+    let t = Math.min(elapsed / duration, 1)
+
+    // easeInCubic
+    t = t * t * t
+
+    // 缩回原始大小
+    const fromScale = searchAnimTargetOriginalScale?.x || 1.6
+    const toScale = 1.0
+    const s = fromScale + (toScale - fromScale) * t
+    searchAnimTarget.scale.set(s, s, s)
+
+    // 恢复不透明度
+    const mat = searchAnimTarget.material as THREE.MeshStandardMaterial
+    mat.opacity = (searchAnimTargetOriginalOpacity || 0.9) + (1 - t) * 0.1
+    mat.emissiveIntensity = 0.45 * (1 - t)
+
+    // 恢复位置
+    if (searchAnimTargetOriginalPos) {
+      searchAnimTarget.position.lerpVectors(
+        searchAnimTarget.position.clone(),
+        searchAnimTargetOriginalPos,
+        t * 3
+      )
+    }
+
+    if (t >= 1) {
+      // 完全恢复
+      if (searchAnimTargetOriginalPos) {
+        searchAnimTarget.position.copy(searchAnimTargetOriginalPos)
+      }
+      searchAnimTarget.scale.set(1, 1, 1)
+      mat.opacity = searchAnimTargetOriginalOpacity || 0.9
+      mat.emissive.set('#000000')
+      mat.emissiveIntensity = 0
+
+      // 恢复自动旋转
+      controls.autoRotate = true
+
+      // 清理
+      searchAnimTarget = null
+      searchAnimPhase = 'idle'
+      searchAnimCamStart = null
+      searchAnimCamTarget = null
+      searchAnimTargetOriginalPos = null
+      searchAnimTargetNormal = null
+      searchAnimTargetOriginalScale = null
+    }
+  }
+}
+
+// 暴露方法给父组件
+defineExpose({
+  searchSticker,
+})
 
 function animate() {
   animationId = requestAnimationFrame(animate)
@@ -481,6 +667,9 @@ function animate() {
   clock.getDelta()
 
   controls.update()
+
+  // 搜索动画
+  updateSearchAnim(performance.now())
 
   // 发射缩放距离，让搜索框跟随球体缩放移动
   emit('zoom', camera.position.distanceTo(controls.target))
