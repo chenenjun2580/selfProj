@@ -2,15 +2,18 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import TruckPopup from './TruckPopup.vue'
+import KeyboardPopup from './KeyboardPopup.vue'
+import CubePopup from './CubePopup.vue'
+import SunPopup from './SunPopup.vue'
 
 const router = useRouter()
 
 // 颜色数据
 const colors = [
   { hex: '#e11d48', name: '小车', desc: '热情似火的玫瑰红' },
-  { hex: '#f472b6', name: '粉', desc: '少女心爆棚的樱花粉' },
-  { hex: '#fb923c', name: '橙', desc: '温暖活力的日落橙' },
-  { hex: '#facc15', name: '黄', desc: '明亮欢快的阳光黄' },
+  { hex: '#f472b6', name: '键盘', desc: '少女心爆棚的樱花粉' },
+  { hex: '#fb923c', name: '方块', desc: '温暖活力的日落橙' },
+  { hex: '#facc15', name: '太阳', desc: '明亮欢快的阳光黄' },
   { hex: '#84cc16', name: '绿', desc: '生机盎然的青草绿' },
   { hex: '#10b981', name: '青', desc: '清新自然的翡翠青' },
   { hex: '#0ea5e9', name: '蓝', desc: '广阔自由的天空蓝' },
@@ -113,19 +116,28 @@ onMounted(() => {
           @close="closePopup"
         />
 
+        <!-- 第二个颜色：键盘组件 -->
+        <KeyboardPopup
+          v-if="popupColor && popupColor.hex === '#f472b6'"
+          :visible="popupVisible"
+          @close="closePopup"
+        />
+
+        <!-- 第三个颜色：方块组件 -->
+        <CubePopup
+          v-if="popupColor && popupColor.hex === '#fb923c'"
+          :visible="popupVisible"
+          @close="closePopup"
+        />
+
+        <!-- 第四个颜色：太阳组件 -->
+        <SunPopup
+          v-if="popupColor && popupColor.hex === '#facc15'"
+          :visible="popupVisible"
+          @close="closePopup"
+        />
+
         <!-- 其他颜色：默认弹窗 -->
-        <div v-else-if="popupColor" class="popup-card">
-          <div class="popup-color-block" :style="{ backgroundColor: popupColor.hex }"></div>
-          <div class="popup-info">
-            <span class="popup-name">{{ popupColor.name }}</span>
-            <span class="popup-hex">{{ popupColor.hex }}</span>
-            <span class="popup-desc">{{ popupColor.desc }}</span>
-          </div>
-          <div class="popup-actions">
-            <button class="popup-copy-btn" @click="copyColor">复制色号</button>
-            <button class="popup-close-btn" @click="closePopup">关闭</button>
-          </div>
-        </div>
       </div>
     </Teleport>
   </div>
