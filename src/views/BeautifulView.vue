@@ -6,17 +6,21 @@ const router = useRouter()
 
 // 颜色数据
 const colors = [
-  { hex: '#e11d48', name: '#e11d48' },
-  { hex: '#f472b6', name: '#f472b6' },
-  { hex: '#fb923c', name: '#fb923c' },
-  { hex: '#facc15', name: '#facc15' },
-  { hex: '#84cc16', name: '#84cc16' },
-  { hex: '#10b981', name: '#10b981' },
-  { hex: '#0ea5e9', name: '#0ea5e9' },
-  { hex: '#3b82f6', name: '#3b82f6' },
-  { hex: '#8b5cf6', name: '#8b5cf6' },
-  { hex: '#a78bfa', name: '#a78bfa' },
+  { hex: '#e11d48', name: '红', desc: '热情似火的玫瑰红' },
+  { hex: '#f472b6', name: '粉', desc: '少女心爆棚的樱花粉' },
+  { hex: '#fb923c', name: '橙', desc: '温暖活力的日落橙' },
+  { hex: '#facc15', name: '黄', desc: '明亮欢快的阳光黄' },
+  { hex: '#84cc16', name: '绿', desc: '生机盎然的青草绿' },
+  { hex: '#10b981', name: '青', desc: '清新自然的翡翠青' },
+  { hex: '#0ea5e9', name: '蓝', desc: '广阔自由的天空蓝' },
+  { hex: '#3b82f6', name: '靛', desc: '深邃沉稳的宝石靛' },
+  { hex: '#8b5cf6', name: '紫', desc: '神秘优雅的薰衣草紫' },
+  { hex: '#a78bfa', name: '雪', desc: '温柔梦幻的薄雾雪' },
 ]
+
+// 弹窗状态
+const popupVisible = ref(false)
+const popupColor = ref<{ hex: string; name: string; desc: string } | null>(null)
 
 // 星星背景
 const stars = ref<Array<{ id: number; x: number; y: number; size: number; delay: number }>>([])
@@ -30,8 +34,19 @@ for (let i = 0; i < 50; i++) {
   })
 }
 
-function copyColor(color: string) {
-  navigator.clipboard.writeText(color).catch(() => {})
+function showPopup(color: { hex: string; name: string; desc: string }) {
+  popupColor.value = color
+  popupVisible.value = true
+}
+
+function closePopup() {
+  popupVisible.value = false
+}
+
+function copyColor() {
+  if (popupColor.value) {
+    navigator.clipboard.writeText(popupColor.value.hex).catch(() => {})
+  }
 }
 
 function goBack() {
@@ -76,16 +91,34 @@ onMounted(() => {
       <div class="comic-panel">
         <div class="container-items">
           <button
-            v-for="color in colors"
+            v-for="(color, index) in colors"
             :key="color.hex"
             class="item-color"
             :style="{ '--color': color.hex }"
-            :aria-color="color.name"
-            @click="copyColor(color.hex)"
+            :data-index="index + 1"
+            @click="showPopup(color)"
           ></button>
         </div>
       </div>
     </div>
+
+    <!-- 弹窗遮罩 -->
+    <Teleport to="body">
+      <div v-if="popupVisible" class="popup-overlay" @click.self="closePopup">
+        <div class="popup-card" v-if="popupColor">
+          <div class="popup-color-block" :style="{ backgroundColor: popupColor.hex }"></div>
+          <div class="popup-info">
+            <span class="popup-name">{{ popupColor.name }}</span>
+            <span class="popup-hex">{{ popupColor.hex }}</span>
+            <span class="popup-desc">{{ popupColor.desc }}</span>
+          </div>
+          <div class="popup-actions">
+            <button class="popup-copy-btn" @click="copyColor">复制色号</button>
+            <button class="popup-close-btn" @click="closePopup">关闭</button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
 
@@ -162,7 +195,7 @@ onMounted(() => {
   height: 100%;
   position: relative;
   z-index: 10;
-  padding-top: 10px;
+  padding-top: 70px;
 }
 
 .comic-panel {
@@ -208,28 +241,26 @@ onMounted(() => {
 }
 
 .item-color::before {
+  content: attr(data-index);
   position: absolute;
-  content: attr(aria-color);
   left: 50%;
-  bottom: 60px;
-  font-size: 16px;
-  letter-spacing: 1px;
-  line-height: 1;
-  padding: 6px 10px;
-  background-color: #fef3c7;
-  color: #000;
-  border: 3px solid #000;
-  border-radius: 6px;
+  top: calc(100% + 6px);
+  transform: translateX(-50%);
+  font-size: 14px;
+  font-weight: 900;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.7);
+  padding: 2px 8px;
+  border-radius: 4px;
   pointer-events: none;
   opacity: 0;
-  visibility: hidden;
-  transform-origin: bottom center;
-  transition:
-    all 300ms cubic-bezier(0.175, 0.885, 0.32, 1.275),
-    opacity 300ms ease-out,
-    visibility 300ms ease-out;
-  transform: translateX(-50%) scale(0.5) translateY(10px);
+  transition: opacity 200ms ease;
+  z-index: 100000;
   white-space: nowrap;
+}
+
+.item-color:hover::before {
+  opacity: 1;
 }
 
 .item-color:hover {
@@ -237,23 +268,9 @@ onMounted(() => {
   z-index: 99999;
 }
 
-.item-color:hover::before {
-  opacity: 1;
-  visibility: visible;
-  transform: translateX(-50%) scale(1) translateY(0);
-}
-
 .item-color:active::after {
   transform: translate(2px, 2px);
   box-shadow: 2px 2px 0 0 #000;
-}
-
-.item-color:focus::before {
-  content: "COPIED!";
-  opacity: 1;
-  visibility: visible;
-  background-color: #a7f3d0;
-  transform: translateX(-50%) scale(1) translateY(0);
 }
 
 .item-color:hover + * {
@@ -274,6 +291,126 @@ onMounted(() => {
 .item-color:has(+ * + *:hover) {
   transform: scale(1.15);
   z-index: 999;
+}
+
+/* 弹窗 */
+.popup-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  animation: fadeIn 0.25s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.popup-card {
+  background: #ffffff;
+  border: 4px solid #000;
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 6px 6px 0 0 #000;
+  width: 300px;
+  max-width: 85vw;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  animation: popIn 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes popIn {
+  from {
+    opacity: 0;
+    transform: scale(0.7) translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.popup-color-block {
+  width: 100%;
+  height: 100px;
+  border-radius: 8px;
+  border: 3px solid #000;
+  box-shadow: 4px 4px 0 0 #000;
+}
+
+.popup-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.popup-name {
+  font-size: 24px;
+  font-weight: 900;
+  color: #111;
+}
+
+.popup-hex {
+  font-size: 18px;
+  font-weight: 700;
+  color: #555;
+  font-family: 'Courier New', monospace;
+  letter-spacing: 1px;
+}
+
+.popup-desc {
+  font-size: 14px;
+  color: #888;
+  margin-top: 2px;
+}
+
+.popup-actions {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+}
+
+.popup-copy-btn,
+.popup-close-btn {
+  flex: 1;
+  padding: 10px 0;
+  border: 3px solid #000;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 3px 3px 0 0 #000;
+  transition: all 150ms ease;
+}
+
+.popup-copy-btn {
+  background: #fef3c7;
+  color: #000;
+}
+
+.popup-close-btn {
+  background: #f0f0f0;
+  color: #333;
+}
+
+.popup-copy-btn:hover,
+.popup-close-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 5px 5px 0 0 #000;
+}
+
+.popup-copy-btn:active,
+.popup-close-btn:active {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0 0 #000;
 }
 
 /* 响应式 */
