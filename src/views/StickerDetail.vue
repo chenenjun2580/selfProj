@@ -9,6 +9,7 @@ const router = useRouter()
 const stickerData = ref<StickerData | null>(null)
 const pageReady = ref(false)
 const isConfession = ref(false)
+const isBirthday = ref(false)
 
 onMounted(() => {
   const dataStr = route.query.data as string
@@ -28,6 +29,10 @@ onMounted(() => {
   if (stickerData.value && stickerData.value.id === 'emo-3') {
     isConfession.value = true
   }
+  // 判断是否为生日系列
+  if (stickerData.value && stickerData.value.id.startsWith('birthday-')) {
+    isBirthday.value = true
+  }
 
   requestAnimationFrame(() => {
     pageReady.value = true
@@ -43,8 +48,9 @@ function goBack() {
 
 function onSaveClick() {
   if (isConfession.value) {
-    // 进入告白互动页
     router.push('/confession')
+  } else if (isBirthday.value) {
+    router.push('/birthday-cake')
   }
 }
 </script>
@@ -77,7 +83,7 @@ function onSaveClick() {
         <a
           href="#"
           class="icon-btn save-btn"
-          :class="{ 'confession-btn': isConfession }"
+          :class="{ 'confession-btn': isConfession, 'birthday-btn': isBirthday }"
           @click.prevent="onSaveClick"
         >
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -493,6 +499,41 @@ function onSaveClick() {
   100% {
     opacity: 0;
   }
+}
+
+/* 生日按钮样式 */
+.birthday-btn {
+  background: linear-gradient(135deg, #ff9a9e 0%, #fad0c4 100%) !important;
+  border-color: #ff9a9e !important;
+  color: #fff !important;
+  animation: birthdayGlow 2s ease-in-out infinite;
+}
+
+.birthday-btn:hover {
+  background: linear-gradient(135deg, #ff758c 0%, #ff7eb3 100%) !important;
+  box-shadow: 0 0 24px rgba(255, 154, 158, 0.5);
+}
+
+@keyframes birthdayGlow {
+  0%, 100% { box-shadow: 0 0 8px rgba(255, 154, 158, 0.3); }
+  50% { box-shadow: 0 0 20px rgba(255, 154, 158, 0.6); }
+}
+
+/* 告白按钮样式 */
+.confession-btn {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%) !important;
+  border-color: #f5576c !important;
+  color: #fff !important;
+  animation: confessionGlow 2s ease-in-out infinite;
+}
+
+.confession-btn:hover {
+  box-shadow: 0 0 24px rgba(245, 87, 108, 0.5);
+}
+
+@keyframes confessionGlow {
+  0%, 100% { box-shadow: 0 0 8px rgba(245, 87, 108, 0.3); }
+  50% { box-shadow: 0 0 20px rgba(245, 87, 108, 0.6); }
 }
 /* From Uiverse.io by amir_6539 */ 
 .container {
