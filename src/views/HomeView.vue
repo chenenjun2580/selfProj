@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onActivated } from 'vue'
 import { useRouter } from 'vue-router'
 import DeepSpaceBackground from '@/components/DeepSpaceBackground.vue'
 import StickerGlobe from '@/components/StickerGlobe.vue'
@@ -43,6 +43,12 @@ function onStickerClick(data: StickerData) {
     router.push({ path: '/sticker', query: { data: dataStr } })
   }, 700)
 }
+
+// 从详情页返回时，清除过渡动画残留
+onActivated(() => {
+  expanding.value = false
+  expandSticker.value = null
+})
 </script>
 
 <template>

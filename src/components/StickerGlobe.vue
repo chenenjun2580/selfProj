@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, onMounted, onUnmounted, onActivated, onDeactivated, nextTick } from 'vue'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { stickerList, type StickerData } from '@/data/stickers'
@@ -27,6 +27,9 @@ let hoveredMesh: THREE.Mesh | null = null
 
 // Tooltip debounce
 let tooltipTimer: ReturnType<typeof setTimeout> | null = null
+
+// Zoom emit throttle
+let lastZoomEmit = 0
 
 // 搜索动画状态
 let searchAnimTarget: THREE.Mesh | null = null
@@ -62,14 +65,14 @@ function fibonacciSphere(samples: number): THREE.Vector3[] {
 
 function createStickerTexture(data: StickerData): THREE.CanvasTexture {
   const canvas = document.createElement('canvas')
-  const size = 256
+  const size = 128
   canvas.width = size
   canvas.height = size
   const ctx = canvas.getContext('2d')!
 
-  // 背景 - 圆角矩形
-  const r = 24
-  const pad = 6
+  // 背景 - 圆角矩形 (坐标等比缩放)
+  const r = 12
+  const pad = 3
   const w = size - pad * 2
   const h = size - pad * 2
   const x = pad
@@ -77,9 +80,9 @@ function createStickerTexture(data: StickerData): THREE.CanvasTexture {
 
   // 柔和阴影
   ctx.shadowColor = 'rgba(0,0,0,0.08)'
-  ctx.shadowBlur = 12
-  ctx.shadowOffsetX = 2
-  ctx.shadowOffsetY = 4
+  ctx.shadowBlur = 6
+  ctx.shadowOffsetX = 1
+  ctx.shadowOffsetY = 2
 
   // 主体背景
   ctx.beginPath()
@@ -115,19 +118,19 @@ function createStickerTexture(data: StickerData): THREE.CanvasTexture {
   ctx.putImageData(imageData, 0, 0)
 
   // 顶部彩色胶条
-  const tapeH = 22
-  const tapeW = 120
+  const tapeH = 11
+  const tapeW = 60
   const tapeX = (size - tapeW) / 2
   ctx.beginPath()
-  ctx.moveTo(tapeX + 8, 10)
-  ctx.lineTo(tapeX + tapeW - 8, 10)
-  ctx.quadraticCurveTo(tapeX + tapeW, 10, tapeX + tapeW, 10 + 8)
-  ctx.lineTo(tapeX + tapeW, 10 + tapeH - 8)
-  ctx.quadraticCurveTo(tapeX + tapeW, 10 + tapeH, tapeX + tapeW - 8, 10 + tapeH)
-  ctx.lineTo(tapeX + 8, 10 + tapeH)
-  ctx.quadraticCurveTo(tapeX, 10 + tapeH, tapeX, 10 + tapeH - 8)
-  ctx.lineTo(tapeX, 10 + 8)
-  ctx.quadraticCurveTo(tapeX, 10, tapeX + 8, 10)
+  ctx.moveTo(tapeX + 4, 5)
+  ctx.lineTo(tapeX + tapeW - 4, 5)
+  ctx.quadraticCurveTo(tapeX + tapeW, 5, tapeX + tapeW, 5 + 4)
+  ctx.lineTo(tapeX + tapeW, 5 + tapeH - 4)
+  ctx.quadraticCurveTo(tapeX + tapeW, 5 + tapeH, tapeX + tapeW - 4, 5 + tapeH)
+  ctx.lineTo(tapeX + 4, 5 + tapeH)
+  ctx.quadraticCurveTo(tapeX, 5 + tapeH, tapeX, 5 + tapeH - 4)
+  ctx.lineTo(tapeX, 5 + 4)
+  ctx.quadraticCurveTo(tapeX, 5, tapeX + 4, 5)
   ctx.closePath()
   ctx.fillStyle = data.tagColor
   ctx.globalAlpha = 0.65
@@ -135,24 +138,24 @@ function createStickerTexture(data: StickerData): THREE.CanvasTexture {
   ctx.globalAlpha = 1
 
   // Emoji
-  ctx.font = '36px "Segoe UI Emoji", "Apple Color Emoji", sans-serif'
+  ctx.font = '18px "Segoe UI Emoji", "Apple Color Emoji", sans-serif'
   ctx.textAlign = 'center'
   ctx.textBaseline = 'middle'
-  ctx.fillText(data.emoji, size / 2, 80)
+  ctx.fillText(data.emoji, size / 2, 40)
 
   // 分类标签
-  ctx.font = 'bold 15px "PingFang SC", "Microsoft YaHei", sans-serif'
+  ctx.font = 'bold 7.5px "PingFang SC", "Microsoft YaHei", sans-serif'
   ctx.fillStyle = 'black'
   ctx.textAlign = 'center'
   ctx.textBaseline = 'middle'
-  ctx.fillText(data.category, size / 2, 118)
+  ctx.fillText(data.category, size / 2, 59)
 
   // 文字
-  ctx.font = 'bold 20px "PingFang SC", "Microsoft YaHei", sans-serif'
+  ctx.font = 'bold 10px "PingFang SC", "Microsoft YaHei", sans-serif'
   ctx.fillStyle = 'black'
   ctx.textAlign = 'center'
   ctx.textBaseline = 'middle'
-  ctx.fillText(data.text, size / 2, 152)
+  ctx.fillText(data.text, size / 2, 76)
 
   // 边缘轻微褶皱效果
   ctx.beginPath()
@@ -171,10 +174,10 @@ function createStickerTexture(data: StickerData): THREE.CanvasTexture {
   ctx.stroke()
 
   const texture = new THREE.CanvasTexture(canvas)
-  texture.minFilter = THREE.LinearMipmapLinearFilter
+  texture.minFilter = THREE.LinearFilter
   texture.magFilter = THREE.LinearFilter
   texture.colorSpace = THREE.SRGBColorSpace
-  texture.generateMipmaps = true
+  texture.generateMipmaps = false
   return texture
 }
 
@@ -236,15 +239,15 @@ function createStickerMesh(data: StickerData, position: THREE.Vector3): THREE.Me
 
 function createGlowSprite(): THREE.Sprite {
   const canvas = document.createElement('canvas')
-  canvas.width = 128
-  canvas.height = 128
+  canvas.width = 64
+  canvas.height = 64
   const ctx = canvas.getContext('2d')!
-  const gradient = ctx.createRadialGradient(64, 64, 0, 64, 64, 64)
+  const gradient = ctx.createRadialGradient(32, 32, 0, 32, 32, 32)
   gradient.addColorStop(0, 'rgba(255,255,255,0.15)')
   gradient.addColorStop(0.4, 'rgba(255,255,255,0.06)')
   gradient.addColorStop(1, 'rgba(255,255,255,0)')
   ctx.fillStyle = gradient
-  ctx.fillRect(0, 0, 128, 128)
+  ctx.fillRect(0, 0, 64, 64)
 
   const texture = new THREE.CanvasTexture(canvas)
   const material = new THREE.SpriteMaterial({
@@ -279,13 +282,14 @@ function initScene() {
   renderer = new THREE.WebGLRenderer({
     antialias: true,
     alpha: true,
+    powerPreference: 'high-performance',
   })
   renderer.setSize(containerRef.value.clientWidth, containerRef.value.clientHeight)
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
-  renderer.shadowMap.enabled = true
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap
+  // 限制像素比为1.5，大幅提升性能
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5))
+  renderer.shadowMap.enabled = false
   renderer.toneMapping = THREE.ACESFilmicToneMapping
-  renderer.toneMappingExposure = 1.1
+  renderer.toneMappingExposure = 1.0
   containerRef.value.appendChild(renderer.domElement)
 
   // OrbitControls
@@ -671,8 +675,12 @@ function animate() {
   // 搜索动画
   updateSearchAnim(performance.now())
 
-  // 发射缩放距离，让搜索框跟随球体缩放移动
-  emit('zoom', camera.position.distanceTo(controls.target))
+  // 发射缩放距离（节流，每200ms才发射一次）
+  const now = performance.now()
+  if (now - lastZoomEmit > 200) {
+    lastZoomEmit = now
+    emit('zoom', camera.position.distanceTo(controls.target))
+  }
 
   renderer.render(scene, camera)
 }
@@ -690,6 +698,20 @@ onMounted(() => {
   nextTick(() => {
     initScene()
   })
+})
+
+// KeepAlive 相关：离开时暂停渲染，返回时恢复
+onDeactivated(() => {
+  if (animationId) {
+    cancelAnimationFrame(animationId)
+    animationId = 0
+  }
+})
+
+onActivated(() => {
+  if (!animationId) {
+    animate()
+  }
 })
 
 onUnmounted(() => {
