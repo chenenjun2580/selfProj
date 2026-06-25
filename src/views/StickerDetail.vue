@@ -11,6 +11,7 @@ const pageReady = ref(false)
 const isConfession = ref(false)
 const isBirthday = ref(false)
 const isBirthdayCard = ref(false)
+const isBeautiful = ref(false)
 
 onMounted(() => {
   const dataStr = route.query.data as string
@@ -40,6 +41,10 @@ onMounted(() => {
   if (id.startsWith('birthday-') && id !== 'birthday-3') {
     isBirthday.value = true
   }
+  // 判断是否为好看的
+  if (id.startsWith('beautiful-')) {
+    isBeautiful.value = true
+  }
 
   requestAnimationFrame(() => {
     pageReady.value = true
@@ -60,6 +65,8 @@ function onSaveClick() {
     router.push('/birthday-card')
   } else if (isBirthday.value) {
     router.push('/birthday-cake')
+  } else if (isBeautiful.value) {
+    router.push('/beautiful')
   }
 }
 </script>
@@ -92,7 +99,7 @@ function onSaveClick() {
         <a
           href="#"
           class="icon-btn save-btn"
-          :class="{ 'confession-btn': isConfession, 'birthday-btn': isBirthday || isBirthdayCard }"
+          :class="{ 'confession-btn': isConfession, 'birthday-btn': isBirthday || isBirthdayCard, 'beautiful-btn': isBeautiful }"
           @click.prevent="onSaveClick"
         >
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -543,6 +550,23 @@ function onSaveClick() {
 @keyframes confessionGlow {
   0%, 100% { box-shadow: 0 0 8px rgba(245, 87, 108, 0.3); }
   50% { box-shadow: 0 0 20px rgba(245, 87, 108, 0.6); }
+}
+
+/* 好看的按钮样式 */
+.beautiful-btn {
+  background: linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%) !important;
+  border-color: #a18cd1 !important;
+  color: #fff !important;
+  animation: beautifulGlow 2s ease-in-out infinite;
+}
+
+.beautiful-btn:hover {
+  box-shadow: 0 0 24px rgba(161, 140, 209, 0.5);
+}
+
+@keyframes beautifulGlow {
+  0%, 100% { box-shadow: 0 0 8px rgba(161, 140, 209, 0.3); }
+  50% { box-shadow: 0 0 20px rgba(161, 140, 209, 0.6); }
 }
 /* From Uiverse.io by amir_6539 */ 
 .container {

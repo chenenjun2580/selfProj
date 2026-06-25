@@ -1,0 +1,294 @@
+<script setup lang="ts">
+import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+
+const router = useRouter()
+
+// 颜色数据
+const colors = [
+  { hex: '#e11d48', name: '#e11d48' },
+  { hex: '#f472b6', name: '#f472b6' },
+  { hex: '#fb923c', name: '#fb923c' },
+  { hex: '#facc15', name: '#facc15' },
+  { hex: '#84cc16', name: '#84cc16' },
+  { hex: '#10b981', name: '#10b981' },
+  { hex: '#0ea5e9', name: '#0ea5e9' },
+  { hex: '#3b82f6', name: '#3b82f6' },
+  { hex: '#8b5cf6', name: '#8b5cf6' },
+  { hex: '#a78bfa', name: '#a78bfa' },
+]
+
+// 星星背景
+const stars = ref<Array<{ id: number; x: number; y: number; size: number; delay: number }>>([])
+for (let i = 0; i < 50; i++) {
+  stars.value.push({
+    id: i,
+    x: Math.random() * 100,
+    y: Math.random() * 100,
+    size: 1 + Math.random() * 2,
+    delay: Math.random() * 3,
+  })
+}
+
+function copyColor(color: string) {
+  navigator.clipboard.writeText(color).catch(() => {})
+}
+
+function goBack() {
+  router.replace('/')
+}
+
+onMounted(() => {
+  // 入场
+})
+</script>
+
+<template>
+  <div class="beautiful-page">
+    <!-- 背景 -->
+    <div class="bg-layer">
+      <div class="bg-gradient"></div>
+      <!-- 星星 -->
+      <div
+        v-for="star in stars"
+        :key="star.id"
+        class="star"
+        :style="{
+          left: star.x + '%',
+          top: star.y + '%',
+          width: star.size + 'px',
+          height: star.size + 'px',
+          animationDelay: star.delay + 's',
+        }"
+      ></div>
+    </div>
+
+    <!-- 返回按钮 -->
+    <button class="back-btn" @click="goBack">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="15 18 9 12 15 6"></polyline>
+      </svg>
+      <span>返回</span>
+    </button>
+
+    <!-- From Uiverse.io by chase2k25 -->
+    <div class="body-wrapper">
+      <div class="comic-panel">
+        <div class="container-items">
+          <button
+            v-for="color in colors"
+            :key="color.hex"
+            class="item-color"
+            :style="{ '--color': color.hex }"
+            :aria-color="color.name"
+            @click="copyColor(color.hex)"
+          ></button>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<style scoped>
+.beautiful-page {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  z-index: 100;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* 背景 */
+.bg-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+}
+
+.bg-gradient {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 50% 20%, #1a1a2e 0%, #16213e 40%, #0f0f23 100%);
+}
+
+.star {
+  position: absolute;
+  border-radius: 50%;
+  background: #fff;
+  animation: starTwinkle 2s ease-in-out infinite;
+}
+
+@keyframes starTwinkle {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 1; }
+}
+
+/* 返回按钮 */
+.back-btn {
+  position: fixed;
+  top: 24px;
+  left: 24px;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 14px;
+  cursor: pointer;
+  backdrop-filter: blur(10px);
+  transition: all 0.3s;
+}
+
+.back-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+}
+
+/* From Uiverse.io by chase2k25 */
+.body-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  width: 100%;
+  height: 100%;
+  position: relative;
+  z-index: 10;
+  padding-top: 10px;
+}
+
+.comic-panel {
+  background: #ffffff;
+  border: 4px solid #000;
+  padding: 1.2rem;
+  border-radius: 8px;
+  box-shadow: 4px 4px 0px rgba(0, 0, 0, 1);
+}
+
+.container-items {
+  display: flex;
+  transform-style: preserve-3d;
+  transform: perspective(1000px);
+}
+
+.item-color {
+  position: relative;
+  flex-shrink: 0;
+  width: 40px;
+  height: 48px;
+  border: none;
+  outline: none;
+  margin: -4px;
+  background-color: transparent;
+  transition: 300ms ease-out;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.item-color::after {
+  position: absolute;
+  content: "";
+  inset: 0;
+  width: 40px;
+  height: 40px;
+  background-color: var(--color);
+  border-radius: 6px;
+  border: 3px solid #000;
+  box-shadow: 4px 4px 0 0 #000;
+  pointer-events: none;
+  transition: 300ms cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.item-color::before {
+  position: absolute;
+  content: attr(aria-color);
+  left: 50%;
+  bottom: 60px;
+  font-size: 16px;
+  letter-spacing: 1px;
+  line-height: 1;
+  padding: 6px 10px;
+  background-color: #fef3c7;
+  color: #000;
+  border: 3px solid #000;
+  border-radius: 6px;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transform-origin: bottom center;
+  transition:
+    all 300ms cubic-bezier(0.175, 0.885, 0.32, 1.275),
+    opacity 300ms ease-out,
+    visibility 300ms ease-out;
+  transform: translateX(-50%) scale(0.5) translateY(10px);
+  white-space: nowrap;
+}
+
+.item-color:hover {
+  transform: scale(1.5) translateY(-5px);
+  z-index: 99999;
+}
+
+.item-color:hover::before {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) scale(1) translateY(0);
+}
+
+.item-color:active::after {
+  transform: translate(2px, 2px);
+  box-shadow: 2px 2px 0 0 #000;
+}
+
+.item-color:focus::before {
+  content: "COPIED!";
+  opacity: 1;
+  visibility: visible;
+  background-color: #a7f3d0;
+  transform: translateX(-50%) scale(1) translateY(0);
+}
+
+.item-color:hover + * {
+  transform: scale(1.3) translateY(-3px);
+  z-index: 9999;
+}
+
+.item-color:hover + * + * {
+  transform: scale(1.15);
+  z-index: 999;
+}
+
+.item-color:has(+ *:hover) {
+  transform: scale(1.3) translateY(-3px);
+  z-index: 9999;
+}
+
+.item-color:has(+ * + *:hover) {
+  transform: scale(1.15);
+  z-index: 999;
+}
+
+/* 响应式 */
+@media (max-width: 480px) {
+  .item-color {
+    width: 32px;
+    height: 40px;
+  }
+  .item-color::after {
+    width: 32px;
+    height: 32px;
+  }
+  .comic-panel {
+    padding: 0.8rem;
+  }
+}
+</style>
+

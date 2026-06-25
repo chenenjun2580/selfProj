@@ -4,6 +4,7 @@ import StickerDetail from '@/views/StickerDetail.vue'
 import ConfessionView from '@/views/ConfessionView.vue'
 import BirthdayCakeView from '@/views/BirthdayCakeView.vue'
 import BirthdayCardView from '@/views/BirthdayCardView.vue'
+import BeautifulView from '@/views/BeautifulView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -32,6 +33,11 @@ const router = createRouter({
       path: '/birthday-card',
       name: 'birthday-card',
       component: BirthdayCardView
+    },
+    {
+      path: '/beautiful',
+      name: 'beautiful',
+      component: BeautifulView
     }
   ]
 })
