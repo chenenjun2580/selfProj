@@ -10,6 +10,7 @@ const stickerData = ref<StickerData | null>(null)
 const pageReady = ref(false)
 const isConfession = ref(false)
 const isBirthday = ref(false)
+const isBirthdayCard = ref(false)
 
 onMounted(() => {
   const dataStr = route.query.data as string
@@ -25,12 +26,18 @@ onMounted(() => {
     return
   }
 
+  const id = stickerData.value?.id || ''
+
   // 判断是否为告白情话
-  if (stickerData.value && stickerData.value.id === 'emo-3') {
+  if (id === 'emo-3') {
     isConfession.value = true
   }
-  // 判断是否为生日系列
-  if (stickerData.value && stickerData.value.id.startsWith('birthday-')) {
+  // 判断是否为生日贺卡（翻盖贺卡）
+  if (id === 'birthday-3') {
+    isBirthdayCard.value = true
+  }
+  // 判断是否为生日系列（蛋糕吹蜡烛）
+  if (id.startsWith('birthday-') && id !== 'birthday-3') {
     isBirthday.value = true
   }
 
@@ -49,6 +56,8 @@ function goBack() {
 function onSaveClick() {
   if (isConfession.value) {
     router.push('/confession')
+  } else if (isBirthdayCard.value) {
+    router.push('/birthday-card')
   } else if (isBirthday.value) {
     router.push('/birthday-cake')
   }
@@ -83,7 +92,7 @@ function onSaveClick() {
         <a
           href="#"
           class="icon-btn save-btn"
-          :class="{ 'confession-btn': isConfession, 'birthday-btn': isBirthday }"
+          :class="{ 'confession-btn': isConfession, 'birthday-btn': isBirthday || isBirthdayCard }"
           @click.prevent="onSaveClick"
         >
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
