@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import TruckPopup from './TruckPopup.vue'
 
 const router = useRouter()
 
 // 颜色数据
 const colors = [
-  { hex: '#e11d48', name: '红', desc: '热情似火的玫瑰红' },
+  { hex: '#e11d48', name: '小车', desc: '热情似火的玫瑰红' },
   { hex: '#f472b6', name: '粉', desc: '少女心爆棚的樱花粉' },
   { hex: '#fb923c', name: '橙', desc: '温暖活力的日落橙' },
   { hex: '#facc15', name: '黄', desc: '明亮欢快的阳光黄' },
@@ -91,11 +92,11 @@ onMounted(() => {
       <div class="comic-panel">
         <div class="container-items">
           <button
-            v-for="(color, index) in colors"
+            v-for="color in colors"
             :key="color.hex"
             class="item-color"
             :style="{ '--color': color.hex }"
-            :data-index="index + 1"
+            :data-name="color.name"
             @click="showPopup(color)"
           ></button>
         </div>
@@ -105,7 +106,15 @@ onMounted(() => {
     <!-- 弹窗遮罩 -->
     <Teleport to="body">
       <div v-if="popupVisible" class="popup-overlay" @click.self="closePopup">
-        <div class="popup-card" v-if="popupColor">
+        <!-- 第一个颜色：卡车组件 -->
+        <TruckPopup
+          v-if="popupColor && popupColor.hex === '#e11d48'"
+          :visible="popupVisible"
+          @close="closePopup"
+        />
+
+        <!-- 其他颜色：默认弹窗 -->
+        <div v-else-if="popupColor" class="popup-card">
           <div class="popup-color-block" :style="{ backgroundColor: popupColor.hex }"></div>
           <div class="popup-info">
             <span class="popup-name">{{ popupColor.name }}</span>
@@ -241,7 +250,7 @@ onMounted(() => {
 }
 
 .item-color::before {
-  content: attr(data-index);
+  content: attr(data-name);
   position: absolute;
   left: 50%;
   top: calc(100% + 6px);
