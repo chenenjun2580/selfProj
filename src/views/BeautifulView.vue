@@ -47,12 +47,6 @@ function closePopup() {
   popupVisible.value = false
 }
 
-function copyColor() {
-  if (popupColor.value) {
-    navigator.clipboard.writeText(popupColor.value.hex).catch(() => {})
-  }
-}
-
 function goBack() {
   router.replace('/')
 }
