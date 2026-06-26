@@ -514,6 +514,9 @@ function logout() {
         <span class="subtitle">Dashboard</span>
       </div>
       <div class="header-right">
+        <router-link to="/file-space-3d" class="space3d-btn">
+          <span>✦</span> 3D 文件空间
+        </router-link>
         <span class="user-info">管理员：root</span>
         <button class="logout-btn" @click="logout">退出登录</button>
       </div>
@@ -778,6 +781,27 @@ function logout() {
 .logout-btn:hover {
   background: rgba(231, 76, 60, 0.2);
   border-color: #e74c3c;
+}
+
+.space3d-btn {
+  padding: 8px 16px;
+  border: 1px solid rgba(79, 195, 247, 0.3);
+  border-radius: 8px;
+  background: linear-gradient(135deg, rgba(79, 195, 247, 0.1), rgba(124, 77, 255, 0.1));
+  color: #4fc3f7;
+  cursor: pointer;
+  font-size: 13px;
+  text-decoration: none;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.space3d-btn:hover {
+  background: linear-gradient(135deg, rgba(79, 195, 247, 0.2), rgba(124, 77, 255, 0.2));
+  border-color: rgba(79, 195, 247, 0.6);
+  box-shadow: 0 0 20px rgba(79, 195, 247, 0.15);
 }
 
 /* Stats Grid */

@@ -8,6 +8,7 @@ declare module '*.vue' {
 
 interface ImportMetaEnv {
   readonly VITE_GLM_API_KEY: string
+  readonly VITE_DEEPSEEK_API_KEY: string
   readonly VITE_OSS_ACCESS_KEY_ID: string
   readonly VITE_OSS_ACCESS_KEY_SECRET: string
 }

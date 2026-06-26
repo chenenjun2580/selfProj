@@ -14,6 +14,7 @@ import CrazyTypingView from '@/views/CrazyTypingView.vue'
 import CounterView from '@/views/CounterView.vue'
 import LoginView from '@/views/LoginView.vue'
 import DashboardView from '@/views/DashboardView.vue'
+import FileSpace3DView from '@/views/FileSpace3DView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -92,6 +93,11 @@ const router = createRouter({
       path: '/dashboard',
       name: 'dashboard',
       component: DashboardView
+    },
+    {
+      path: '/file-space-3d',
+      name: 'file-space-3d',
+      component: FileSpace3DView
     }
   ]
 })
