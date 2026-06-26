@@ -14,6 +14,7 @@ const isBirthdayCard = ref(false)
 const isBirthdayPrank = ref(false)
 const isGiftBox = ref(false)
 const isFirework = ref(false)
+const isLazyDown = ref(false)
 const isBeautiful = ref(false)
 
 onMounted(() => {
@@ -56,6 +57,10 @@ onMounted(() => {
   if (id === 'bless-9') {
     isFirework.value = true
   }
+  // 判断是否为躺平模拟器（摆烂语录）
+  if (id === 'fun-3') {
+    isLazyDown.value = true
+  }
   // 判断是否为好看的
   if (id.startsWith('beautiful-')) {
     isBeautiful.value = true
@@ -84,6 +89,8 @@ function onSaveClick() {
     router.push('/gift-box')
   } else if (isFirework.value) {
     router.push('/firework')
+  } else if (isLazyDown.value) {
+    router.push('/lazy-down')
   } else if (isBirthday.value) {
     router.push('/birthday-cake')
   } else if (isBeautiful.value) {
@@ -119,7 +126,7 @@ function onSaveClick() {
       <div class="icons">
         <button
           class="play-btn"
-          :class="{ 'confession-btn': isConfession, 'birthday-btn': isBirthday || isBirthdayCard || isBirthdayPrank || isGiftBox, 'beautiful-btn': isBeautiful, 'firework-btn': isFirework }"
+          :class="{ 'confession-btn': isConfession, 'birthday-btn': isBirthday || isBirthdayCard || isBirthdayPrank || isGiftBox, 'beautiful-btn': isBeautiful, 'firework-btn': isFirework, 'lazy-btn': isLazyDown }"
           @click="onSaveClick"
         >
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 36" width="36px" height="36px">

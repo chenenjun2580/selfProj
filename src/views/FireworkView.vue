@@ -26,7 +26,7 @@ interface Firework {
 const fireworks = ref<Firework[]>([])
 const canvasRef = ref<HTMLCanvasElement | null>(null)
 let ctx: CanvasRenderingContext2D | null = null
-let animId = 0
+
 
 const colors = [
   '#FF6B6B', '#FFD93D', '#6BCB77', '#4D96FF',
@@ -172,7 +172,7 @@ function animate() {
     }
   }
 
-  animId = requestAnimationFrame(animate)
+  requestAnimationFrame(animate)
 }
 
 function handleClick(e: MouseEvent) {

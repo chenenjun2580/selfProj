@@ -8,6 +8,7 @@ import BeautifulView from '@/views/BeautifulView.vue'
 import BirthdayPrankView from '@/views/BirthdayPrankView.vue'
 import GiftBoxView from '@/views/GiftBoxView.vue'
 import FireworkView from '@/views/FireworkView.vue'
+import LazyDownView from '@/views/LazyDownView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -56,6 +57,11 @@ const router = createRouter({
       path: '/firework',
       name: 'firework',
       component: FireworkView
+    },
+    {
+      path: '/lazy-down',
+      name: 'lazy-down',
+      component: LazyDownView
     }
   ]
 })
