@@ -34,6 +34,7 @@ const previewTab = ref<'preview' | 'info'>('preview')
 const chatMessages = ref<{ role: string; content: string }[]>([])
 const userInput = ref('')
 const isAIThinking = ref(false)
+const aiPanelCollapsed = ref(false)
 
 // ========== 搜索 & 自定义 & 拖拽 ==========
 const searchQuery = ref('')
@@ -917,30 +918,36 @@ onUnmounted(() => {
     </div>
 
     <!-- AI 侧边栏 -->
-    <div class="ai-panel">
+    <div :class="['ai-panel', { collapsed: aiPanelCollapsed }]">
       <div class="ai-header">
-        <span class="ai-icon">🤖</span>
-        <span>AI 导航助手</span>
-        <span v-if="isAIThinking" class="thinking-dots">
+        <span class="ai-icon">{{ aiPanelCollapsed ? '💬' : '🤖' }}</span>
+        <span>{{ aiPanelCollapsed ? 'AI' : 'AI 导航助手' }}</span>
+        <span v-if="isAIThinking && !aiPanelCollapsed" class="thinking-dots">
           <span>.</span><span>.</span><span>.</span>
         </span>
+        <div class="ai-header-spacer"></div>
+        <button class="ai-collapse-btn" @click="aiPanelCollapsed = !aiPanelCollapsed" :title="aiPanelCollapsed ? '展开' : '折叠'">
+          {{ aiPanelCollapsed ? '◀' : '▶' }}
+        </button>
       </div>
-      <div class="ai-messages" ref="chatRef">
-        <div v-for="(msg, i) in chatMessages" :key="i"
-          :class="['msg', msg.role === 'assistant' ? 'msg-ai' : 'msg-user']">
-          <div class="msg-avatar">{{ msg.role === 'assistant' ? '🤖' : '👤' }}</div>
-          <div class="msg-content">{{ msg.content }}</div>
+      <template v-if="!aiPanelCollapsed">
+        <div class="ai-messages">
+          <div v-for="(msg, i) in chatMessages" :key="i"
+            :class="['msg', msg.role === 'assistant' ? 'msg-ai' : 'msg-user']">
+            <div class="msg-avatar">{{ msg.role === 'assistant' ? '🤖' : '👤' }}</div>
+            <div class="msg-content">{{ msg.content }}</div>
+          </div>
         </div>
-      </div>
-      <div class="ai-input">
-        <input v-model="userInput" @keyup.enter="sendMessage" placeholder="问 AI 导航助手..." />
-        <button @click="sendMessage" :disabled="isAIThinking || !userInput.trim()">发送</button>
-      </div>
-      <div class="ai-suggestions">
-        <button @click="askAI('帮我看看空间里有哪些文件')">📋 查看文件</button>
-        <button @click="askAI('推荐一个好看的图片文件')">🖼️ 推荐图片</button>
-        <button @click="askAI('有哪些文档需要处理')">📄 查看文档</button>
-      </div>
+        <div class="ai-input">
+          <input v-model="userInput" @keyup.enter="sendMessage" placeholder="问 AI 导航助手..." />
+          <button @click="sendMessage" :disabled="isAIThinking || !userInput.trim()">发送</button>
+        </div>
+        <div class="ai-suggestions">
+          <button @click="askAI('帮我看看空间里有哪些文件')">📋 查看文件</button>
+          <button @click="askAI('推荐一个好看的图片文件')">🖼️ 推荐图片</button>
+          <button @click="askAI('有哪些文档需要处理')">📄 查看文档</button>
+        </div>
+      </template>
     </div>
 
     <!-- 文件预览弹窗 -->
@@ -1198,6 +1205,44 @@ onUnmounted(() => {
   flex-direction: column;
   z-index: 10;
   overflow: hidden;
+  transition: width 0.25s ease, background 0.25s ease;
+}
+
+.ai-panel.collapsed {
+  width: 56px;
+  background: rgba(10,10,26,0.7);
+}
+
+.ai-panel.collapsed .ai-header {
+  padding: 14px 12px;
+  flex-direction: column;
+  gap: 6px;
+  border-bottom: none;
+  font-size: 11px;
+}
+
+.ai-panel.collapsed .ai-icon { font-size: 22px; }
+
+.ai-header-spacer { flex: 1; }
+
+.ai-collapse-btn {
+  border: none;
+  background: rgba(255,255,255,0.05);
+  color: rgba(255,255,255,0.4);
+  width: 24px; height: 24px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.ai-collapse-btn:hover {
+  background: rgba(255,255,255,0.12);
+  color: #fff;
 }
 
 .ai-header {
