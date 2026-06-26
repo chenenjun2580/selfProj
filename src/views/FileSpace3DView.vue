@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { CSS2DRenderer, CSS2DObject } from 'three/examples/jsm/renderers/CSS2DRenderer.js'
@@ -19,6 +19,8 @@ interface SpaceFile {
   dataUrl?: string
   textContent?: string        // 文档文本内容
   rawFile?: File              // 上传的原始文件
+  userShape?: string          // 用户自定义形状
+  userColor?: string          // 用户自定义颜色
   position: THREE.Vector3
   mesh?: THREE.Object3D
   label?: CSS2DObject
@@ -33,6 +35,185 @@ const chatMessages = ref<{ role: string; content: string }[]>([])
 const userInput = ref('')
 const isAIThinking = ref(false)
 
+// ========== 搜索 & 自定义 & 拖拽 ==========
+const searchQuery = ref('')
+const showCustomize = ref(false)
+const moveMode = ref(false)
+let draggingFile: SpaceFile | null = null
+let dragOffset = new THREE.Vector3()
+let dragPlane = new THREE.Plane()
+
+const shapeOptions = ['box', 'sphere', 'cylinder', 'cone', 'torus', 'icosahedron'] as const
+type ShapeType = (typeof shapeOptions)[number]
+
+const colorOptions = [
+  { name: '蓝色', hex: '#4fc3f7' },
+  { name: '紫色', hex: '#7c4dff' },
+  { name: '橙色', hex: '#ffb74d' },
+  { name: '粉色', hex: '#f06292' },
+  { name: '绿色', hex: '#81c784' },
+  { name: '红色', hex: '#e57373' },
+  { name: '青色', hex: '#4dd0e1' },
+  { name: '黄色', hex: '#ffd54f' },
+  { name: '白色', hex: '#eeeeee' },
+]
+
+function changeShape(file: SpaceFile, shape: ShapeType) {
+  if (!file.mesh) return
+  file.userShape = shape
+  applyCustomAppearance(file)
+  closeCustomize()
+  askAI(`已将 ${file.name} 的形状改为 ${shape}`)
+}
+
+function changeColor(file: SpaceFile, colorHex: string) {
+  if (!file.mesh) return
+  file.userColor = colorHex
+  applyCustomAppearance(file)
+  closeCustomize()
+}
+
+function applyCustomAppearance(file: SpaceFile) {
+  if (!file.mesh) return
+  // 在现有的 group 中更新 mesh
+  const group = file.mesh
+  // 移除旧的子 mesh
+  const toRemove: THREE.Object3D[] = []
+  group.children.forEach(child => {
+    if (child instanceof THREE.Mesh) {
+      (child as THREE.Mesh).geometry?.dispose()
+      if (Array.isArray((child as THREE.Mesh).material)) {
+        ((child as THREE.Mesh).material as THREE.Material[]).forEach(m => m.dispose())
+      } else {
+        ((child as THREE.Mesh).material as THREE.Material)?.dispose()
+      }
+      toRemove.push(child)
+    }
+  })
+  toRemove.forEach(child => { if (child.parent === group) group.remove(child) })
+
+  const mainColor = new THREE.Color(file.userColor || fileColors[file.type] || fileColors.other)
+  const hasShape = !!file.userShape
+  const shapeName = file.userShape || 'box'
+
+  if (hasShape) {
+    // 使用自定义形状
+    const geo = createShapeGeo(shapeName)
+    let mat: THREE.Material
+    if (file.type === 'image' && file.dataUrl) {
+      mat = new THREE.MeshStandardMaterial({ map: createTextureFromDataUrl(file.dataUrl), color: 0xffffff })
+    } else {
+      mat = new THREE.MeshStandardMaterial({ color: mainColor, metalness: 0.3, roughness: 0.5 })
+    }
+    const mesh = new THREE.Mesh(geo, mat)
+    mesh.castShadow = true
+    group.add(mesh)
+  } else {
+    // 恢复默认外观（只改颜色）
+    if (file.type === 'image') {
+      const frameMat = new THREE.MeshStandardMaterial({
+        color: file.userColor ? mainColor : 0xdddddd,
+        metalness: 0.7, roughness: 0.2,
+      })
+      const frameW = 1.8, frameH = 1.4, depth = 0.08
+      const outerMesh = new THREE.Mesh(new THREE.BoxGeometry(frameW + 0.12, frameH + 0.12, depth), frameMat)
+      outerMesh.position.z = -depth / 2
+      group.add(outerMesh)
+      if (file.dataUrl) {
+        const imgMat = new THREE.MeshBasicMaterial({ map: createTextureFromDataUrl(file.dataUrl) })
+        const imgMesh = new THREE.Mesh(new THREE.PlaneGeometry(frameW, frameH), imgMat)
+        imgMesh.position.z = depth / 2 + 0.01
+        group.add(imgMesh)
+      } else {
+        const imgMat = new THREE.MeshStandardMaterial({ color: file.userColor ? mainColor : 0x333355 })
+        const imgMesh = new THREE.Mesh(new THREE.PlaneGeometry(frameW, frameH), imgMat)
+        imgMesh.position.z = depth / 2 + 0.01
+        group.add(imgMesh)
+      }
+    } else if (file.type === 'document') {
+      const pageMat = new THREE.MeshStandardMaterial({ color: 0xfff8e7, roughness: 0.8 })
+      const coverMat = new THREE.MeshStandardMaterial({
+        color: file.userColor ? mainColor : 0x222244,
+        roughness: 0.4, metalness: 0.3,
+      })
+      const bookW = 1.2, bookH = 0.08, bookD = 1.6
+      const cover = new THREE.Mesh(new THREE.BoxGeometry(bookW, bookH, bookD), coverMat)
+      cover.position.y = 0.04; group.add(cover)
+      const back = new THREE.Mesh(new THREE.BoxGeometry(bookW, bookH, bookD), coverMat)
+      back.position.y = -0.04; group.add(back)
+      const pages = new THREE.Mesh(new THREE.BoxGeometry(bookW - 0.05, 0.06, bookD - 0.05), pageMat)
+      pages.position.y = 0; group.add(pages)
+      const spineMat = new THREE.MeshStandardMaterial({ color: mainColor })
+      const spine = new THREE.Mesh(new THREE.BoxGeometry(0.04, bookH + 0.08, bookD), spineMat)
+      spine.position.set(-bookW / 2 + 0.02, 0, 0); group.add(spine)
+    } else {
+      const geo = createShapeGeo('cylinder')
+      const mat = new THREE.MeshStandardMaterial({ color: mainColor, metalness: 0.3, roughness: 0.5 })
+      const mesh = new THREE.Mesh(geo, mat)
+      mesh.castShadow = true; group.add(mesh)
+    }
+  }
+}
+
+function closeCustomize() {
+  showCustomize.value = false
+}
+
+function resetAppearance() {
+  if (!selectedFile.value) return
+  delete selectedFile.value.userShape
+  delete selectedFile.value.userColor
+  applyCustomAppearance(selectedFile.value)
+  closeCustomize()
+  askAI(`已将 ${selectedFile.value.name} 恢复为默认外观`)
+}
+
+watch(searchQuery, (val: string) => {
+  if (!val) {
+    spaceFiles.value.forEach((f: SpaceFile) => {
+      if (f.mesh) f.mesh.visible = true
+      if (f.label) f.label.visible = true
+    })
+  }
+})
+
+// 搜索
+function getFilteredFiles(): SpaceFile[] {
+  if (!searchQuery.value.trim()) return spaceFiles.value
+  const q = searchQuery.value.toLowerCase()
+  return spaceFiles.value.filter((f: SpaceFile) =>
+    f.name.toLowerCase().includes(q) ||
+    f.ext.toLowerCase().includes(q) ||
+    f.type.toLowerCase().includes(q) ||
+    f.description.toLowerCase().includes(q)
+  )
+}
+
+function highlightSearch() {
+  const results = getFilteredFiles()
+  spaceFiles.value.forEach((f: SpaceFile) => {
+    const matched = results.includes(f)
+    if (f.mesh) {
+      f.mesh.visible = matched
+    }
+    if (f.label) {
+      f.label.visible = matched
+    }
+  })
+  if (results.length === 1) {
+    selectFile(results[0])
+  } else if (results.length > 0 && selectedFile.value && !results.includes(selectedFile.value)) {
+    // 如果当前选中的不在结果中，选第一个
+    selectFile(results[0])
+  }
+  if (results.length === 0 && selectedFile.value) {
+    // 无结果时取消选中
+    selectedFile.value = null
+    showPreview.value = false
+    previewFile.value = null
+  }
+}
+
 // ========== Three.js 场景 ==========
 let scene: THREE.Scene
 let camera: THREE.PerspectiveCamera
@@ -42,7 +223,6 @@ let controls: OrbitControls
 let animationId: number
 let container: HTMLDivElement
 let raycaster: THREE.Raycaster
-let mouse: THREE.Vector2
 let isMouseDown = false
 let mouseMoved = false
 let clickStartPos = { x: 0, y: 0 }
@@ -93,7 +273,6 @@ function initScene() {
   controls.target.set(0, 1, 0)
 
   raycaster = new THREE.Raycaster()
-  mouse = new THREE.Vector2()
 
   // 灯光
   const ambientLight = new THREE.AmbientLight(0x404060, 0.6)
@@ -175,88 +354,99 @@ function createParticles() {
   scene.add(points)
 }
 
+function createShapeGeo(shape: string): THREE.BufferGeometry {
+  switch (shape) {
+    case 'sphere': return new THREE.SphereGeometry(0.6, 24, 24)
+    case 'cylinder': return new THREE.CylinderGeometry(0.5, 0.5, 1, 24)
+    case 'cone': return new THREE.ConeGeometry(0.6, 1, 24)
+    case 'torus': return new THREE.TorusGeometry(0.45, 0.15, 16, 32)
+    case 'icosahedron': return new THREE.IcosahedronGeometry(0.55)
+    default: return new THREE.BoxGeometry(1, 1, 1)
+  }
+}
+
+function createTextureFromDataUrl(dataUrl: string): THREE.Texture {
+  const img = new Image()
+  img.src = dataUrl
+  const tex = new THREE.Texture(img)
+  tex.needsUpdate = true
+  return tex
+}
+
 function createFileObject(file: SpaceFile): THREE.Object3D {
   const group = new THREE.Group()
-  const color = fileColors[file.type] || fileColors.other
+  const hasShape = !!file.userShape
+  const hasColor = !!file.userColor
+  const mainColor = new THREE.Color(file.userColor || fileColors[file.type] || fileColors.other)
+  const mainShape = file.userShape || ''
 
   if (file.type === 'image') {
-    // 3D 相框
-    const frameMat = new THREE.MeshStandardMaterial({
-      color: 0xdddddd,
-      metalness: 0.7,
-      roughness: 0.2,
-    })
-    const frameW = 1.8, frameH = 1.4, depth = 0.08
-    // 相框外框
-    const outer = new THREE.BoxGeometry(frameW + 0.12, frameH + 0.12, depth)
-    const outerMesh = new THREE.Mesh(outer, frameMat)
-    outerMesh.position.z = -depth / 2
-    group.add(outerMesh)
-
-    // 相框内图片
-    if (file.dataUrl) {
-      const img = new Image()
-      img.src = file.dataUrl
-      const texture = new THREE.Texture(img)
-      texture.needsUpdate = true
-      const imgMat = new THREE.MeshBasicMaterial({ map: texture })
-      const imgGeo = new THREE.PlaneGeometry(frameW, frameH)
-      const imgMesh = new THREE.Mesh(imgGeo, imgMat)
-      imgMesh.position.z = depth / 2 + 0.01
-      group.add(imgMesh)
+    if (hasShape) {
+      const geo = createShapeGeo(mainShape)
+      const imgMat = file.dataUrl
+        ? new THREE.MeshStandardMaterial({ map: createTextureFromDataUrl(file.dataUrl), color: 0xffffff })
+        : new THREE.MeshStandardMaterial({ color: mainColor })
+      const mesh = new THREE.Mesh(geo, imgMat)
+      mesh.castShadow = true
+      group.add(mesh)
     } else {
-      const imgMat = new THREE.MeshStandardMaterial({ color: 0x333355 })
-      const imgGeo = new THREE.PlaneGeometry(frameW, frameH)
-      const imgMesh = new THREE.Mesh(imgGeo, imgMat)
-      imgMesh.position.z = depth / 2 + 0.01
-      group.add(imgMesh)
-      // 占位图标
-      const iconMat = new THREE.MeshStandardMaterial({ color })
-      const iconGeo = new THREE.CircleGeometry(0.3, 16)
-      const icon = new THREE.Mesh(iconGeo, iconMat)
-      icon.position.z = 0.05
-      group.add(icon)
+      const frameMat = new THREE.MeshStandardMaterial({
+        color: hasColor ? mainColor : 0xdddddd,
+        metalness: 0.7,
+        roughness: 0.2,
+      })
+      const frameW = 1.8, frameH = 1.4, depth = 0.08
+      const outerMesh = new THREE.Mesh(new THREE.BoxGeometry(frameW + 0.12, frameH + 0.12, depth), frameMat)
+      outerMesh.position.z = -depth / 2
+      group.add(outerMesh)
+      if (file.dataUrl) {
+        const imgMat2 = new THREE.MeshBasicMaterial({ map: createTextureFromDataUrl(file.dataUrl) })
+        const imgMesh = new THREE.Mesh(new THREE.PlaneGeometry(frameW, frameH), imgMat2)
+        imgMesh.position.z = depth / 2 + 0.01
+        group.add(imgMesh)
+      } else {
+        const imgMat2 = new THREE.MeshStandardMaterial({ color: hasColor ? mainColor : 0x333355 })
+        const imgMesh = new THREE.Mesh(new THREE.PlaneGeometry(frameW, frameH), imgMat2)
+        imgMesh.position.z = depth / 2 + 0.01
+        group.add(imgMesh)
+        const icon = new THREE.Mesh(new THREE.CircleGeometry(0.3, 16), new THREE.MeshStandardMaterial({ color: mainColor }))
+        icon.position.z = 0.05
+        group.add(icon)
+      }
     }
   } else if (file.type === 'document') {
-    // 书本模型
-    const pageMat = new THREE.MeshStandardMaterial({
-      color: 0xfff8e7,
-      roughness: 0.8,
-    })
-    const coverMat = new THREE.MeshStandardMaterial({
-      color: 0x222244,
-      roughness: 0.4,
-      metalness: 0.3,
-    })
-
-    const bookW = 1.2, bookH = 0.08, bookD = 1.6
-    // 封面
-    const cover = new THREE.Mesh(new THREE.BoxGeometry(bookW, bookH, bookD), coverMat)
-    cover.position.y = 0.04
-    group.add(cover)
-    // 封底
-    const back = new THREE.Mesh(new THREE.BoxGeometry(bookW, bookH, bookD), coverMat)
-    back.position.y = -0.04
-    group.add(back)
-    // 书页
-    const pages = new THREE.Mesh(new THREE.BoxGeometry(bookW - 0.05, 0.06, bookD - 0.05), pageMat)
-    pages.position.y = 0
-    group.add(pages)
-    // 书脊高亮
-    const spineMat = new THREE.MeshStandardMaterial({ color })
-    const spine = new THREE.Mesh(new THREE.BoxGeometry(0.04, bookH + 0.08, bookD), spineMat)
-    spine.position.set(-bookW / 2 + 0.02, 0, 0)
-    group.add(spine)
+    if (hasShape) {
+      const geo = createShapeGeo(mainShape)
+      const mat = new THREE.MeshStandardMaterial({ color: mainColor, metalness: 0.3, roughness: 0.5 })
+      const mesh = new THREE.Mesh(geo, mat)
+      mesh.castShadow = true
+      group.add(mesh)
+    } else {
+      const pageMat = new THREE.MeshStandardMaterial({ color: 0xfff8e7, roughness: 0.8 })
+      const coverMat = new THREE.MeshStandardMaterial({ color: hasColor ? mainColor : 0x222244, roughness: 0.4, metalness: 0.3 })
+      const bookW = 1.2, bookH = 0.08, bookD = 1.6
+      const cover = new THREE.Mesh(new THREE.BoxGeometry(bookW, bookH, bookD), coverMat)
+      cover.position.y = 0.04
+      group.add(cover)
+      const back = new THREE.Mesh(new THREE.BoxGeometry(bookW, bookH, bookD), coverMat)
+      back.position.y = -0.04
+      group.add(back)
+      const pages = new THREE.Mesh(new THREE.BoxGeometry(bookW - 0.05, 0.06, bookD - 0.05), pageMat)
+      pages.position.y = 0
+      group.add(pages)
+      const spineMat = new THREE.MeshStandardMaterial({ color: mainColor })
+      const spine = new THREE.Mesh(new THREE.BoxGeometry(0.04, bookH + 0.08, bookD), spineMat)
+      spine.position.set(-bookW / 2 + 0.02, 0, 0)
+      group.add(spine)
+    }
   } else {
-    // 通用 - 六棱柱
-    const geo = new THREE.CylinderGeometry(0.5, 0.5, 0.8, 6)
-    const mat = new THREE.MeshStandardMaterial({ color, metalness: 0.3, roughness: 0.5 })
+    const geo = createShapeGeo(file.userShape || 'cylinder')
+    const mat = new THREE.MeshStandardMaterial({ color: mainColor, metalness: 0.3, roughness: 0.5 })
     const mesh = new THREE.Mesh(geo, mat)
     mesh.castShadow = true
     group.add(mesh)
-    // 发光环
     const ringMat = new THREE.MeshBasicMaterial({
-      color,
+      color: mainColor,
       transparent: true,
       opacity: 0.3,
       side: THREE.DoubleSide,
@@ -310,29 +500,7 @@ function addFileToScene(file: SpaceFile) {
 }
 
 // ========== 交互 ==========
-function onPointerDown(e: PointerEvent) {
-  isMouseDown = true
-  mouseMoved = false
-  clickStartPos.x = e.clientX
-  clickStartPos.y = e.clientY
-}
-
-function onPointerMove(e: PointerEvent) {
-  if (isMouseDown) {
-    const dx = e.clientX - clickStartPos.x
-    const dy = e.clientY - clickStartPos.y
-    if (Math.abs(dx) > 5 || Math.abs(dy) > 5) mouseMoved = true
-  }
-}
-
-function onPointerUp(e: PointerEvent) {
-  if (mouseMoved) { isMouseDown = false; return }
-  isMouseDown = false
-
-  mouse.x = (e.offsetX / renderer.domElement.clientWidth) * 2 - 1
-  mouse.y = -(e.offsetY / renderer.domElement.clientHeight) * 2 + 1
-
-  raycaster.setFromCamera(mouse, camera)
+function getIntersectFile(): SpaceFile | null {
   const meshes: THREE.Object3D[] = []
   scene.traverse(obj => {
     if (obj.userData.fileId) meshes.push(obj)
@@ -342,10 +510,108 @@ function onPointerUp(e: PointerEvent) {
     let obj = intersects[0].object
     while (obj.parent && !obj.userData.fileId) obj = obj.parent
     if (obj.userData.fileId) {
-      const file = spaceFiles.value.find((f: SpaceFile) => f.id === obj.userData.fileId)
-      if (file) selectFile(file)
+      return spaceFiles.value.find((f: SpaceFile) => f.id === obj.userData.fileId) || null
     }
   }
+  return null
+}
+
+function getDragPoint(e: PointerEvent, targetPos: THREE.Vector3): THREE.Vector3 | null {
+  const rect = renderer.domElement.getBoundingClientRect()
+  const mx = ((e.clientX - rect.left) / rect.width) * 2 - 1
+  const my = -((e.clientY - rect.top) / rect.height) * 2 + 1
+  raycaster.setFromCamera(new THREE.Vector2(mx, my), camera)
+  // 创建一个垂直于视线且穿过目标点的平面
+  const camDir = new THREE.Vector3()
+  camera.getWorldDirection(camDir)
+  dragPlane.setFromNormalAndCoplanarPoint(camDir, targetPos)
+  const hit = new THREE.Vector3()
+  const result = raycaster.ray.intersectPlane(dragPlane, hit)
+  return result
+}
+
+function onPointerDown(e: PointerEvent) {
+  isMouseDown = true
+  mouseMoved = false
+  clickStartPos.x = e.clientX
+  clickStartPos.y = e.clientY
+
+  if (moveMode.value) {
+    const rect = renderer.domElement.getBoundingClientRect()
+    const mx = ((e.clientX - rect.left) / rect.width) * 2 - 1
+    const my = -((e.clientY - rect.top) / rect.height) * 2 + 1
+    raycaster.setFromCamera(new THREE.Vector2(mx, my), camera)
+    const file = getIntersectFile()
+    if (file && file.mesh) {
+      draggingFile = file
+      selectedFile.value = file
+      // 计算鼠标在拖拽平面上的点与文件位置的偏移
+      const dp = getDragPoint(e, file.mesh.position)
+      if (dp) {
+        dragOffset.copy(file.mesh.position).sub(dp)
+      }
+      controls.enabled = false
+      renderer.domElement.style.cursor = 'grabbing'
+    }
+    return
+  }
+}
+
+function onPointerMove(e: PointerEvent) {
+  if (draggingFile && draggingFile.mesh) {
+    const dp = getDragPoint(e, draggingFile.mesh.position)
+    if (dp) {
+      // 新位置 = 鼠标在平面上的点 + 偏移
+      const newPos = dp.clone().add(dragOffset)
+      // 限制在场景范围内
+      newPos.x = Math.max(-18, Math.min(18, newPos.x))
+      newPos.z = Math.max(-18, Math.min(18, newPos.z))
+      newPos.y = draggingFile.position.y // 保持原高度
+      draggingFile.mesh.position.copy(newPos)
+      draggingFile.position.copy(newPos)
+      if (draggingFile.label) {
+        draggingFile.label.position.copy(newPos)
+        draggingFile.label.position.y += 1.6
+      }
+    }
+    return
+  }
+
+  if (isMouseDown) {
+    const dx = e.clientX - clickStartPos.x
+    const dy = e.clientY - clickStartPos.y
+    if (Math.abs(dx) > 5 || Math.abs(dy) > 5) mouseMoved = true
+  }
+  // 拖拽模式鼠标悬浮时改变指针
+  if (moveMode.value) {
+    const rect = renderer.domElement.getBoundingClientRect()
+    const mx = ((e.clientX - rect.left) / rect.width) * 2 - 1
+    const my = -((e.clientY - rect.top) / rect.height) * 2 + 1
+    raycaster.setFromCamera(new THREE.Vector2(mx, my), camera)
+    const file = getIntersectFile()
+    renderer.domElement.style.cursor = file ? 'grab' : 'default'
+  }
+}
+
+function onPointerUp(e: PointerEvent) {
+  if (draggingFile) {
+    draggingFile = null
+    controls.enabled = true
+    renderer.domElement.style.cursor = 'default'
+    return
+  }
+
+  if (mouseMoved) { isMouseDown = false; return }
+  isMouseDown = false
+
+  if (moveMode.value) return
+
+  const rect = renderer.domElement.getBoundingClientRect()
+  const mx = ((e.clientX - rect.left) / rect.width) * 2 - 1
+  const my = -((e.clientY - rect.top) / rect.height) * 2 + 1
+  raycaster.setFromCamera(new THREE.Vector2(mx, my), camera)
+  const file = getIntersectFile()
+  if (file) selectFile(file)
 }
 
 function selectFile(file: SpaceFile) {
@@ -478,7 +744,7 @@ const sampleFiles: SpaceFile[] = [
   { id: '3', name: '团队合影.png', type: 'image', ext: 'PNG', size: '4.5 MB', description: '2024 年团队合影', position: new THREE.Vector3(-2, 0.5, 3), dataUrl: '' },
   { id: '4', name: '技术方案.pdf', type: 'document', ext: 'PDF', size: '3.2 MB', description: '系统架构设计方案', position: new THREE.Vector3(4, 0.5, 2.5) },
   { id: '5', name: '产品截图.png', type: 'image', ext: 'PNG', size: '1.8 MB', description: '产品主页截图', position: new THREE.Vector3(-4, 0.5, -3.5), dataUrl: '' },
-  { id: '6', name: '会议纪要.docx', type: 'document', ext: 'DOCX', size: '0.5 MB', description: '周一例会纪要', position: new THREE.Vector3(2, 0.5, -4) },
+  { id: '6', name: '陈雨彤.docx', type: 'document', ext: 'DOCX', size: '0.5 MB', description: '你没有权限', position: new THREE.Vector3(2, 0.5, -4) },
   { id: '7', name: '数据分析.zip', type: 'other', ext: 'ZIP', size: '8.2 MB', description: '用户行为数据包', position: new THREE.Vector3(-1, 0.5, -4.5) },
   { id: '8', name: 'API文档.pdf', type: 'document', ext: 'PDF', size: '2.1 MB', description: 'REST API 接口文档', position: new THREE.Vector3(-3.5, 0.5, 4) },
 ]
@@ -606,6 +872,11 @@ onUnmounted(() => {
         <span class="logo-icon">✦</span>
         <span>3D 文件空间</span>
       </div>
+      <div class="search-bar">
+        <span class="search-icon">🔍</span>
+        <input v-model="searchQuery" @input="highlightSearch" placeholder="搜索文件名、类型..." />
+        <button v-if="searchQuery" class="search-clear" @click="searchQuery = ''; highlightSearch()">✕</button>
+      </div>
       <div class="top-actions">
         <label class="upload-btn">
           <input type="file" @change="handleUpload" hidden />
@@ -616,6 +887,9 @@ onUnmounted(() => {
         </button>
         <button class="nav-btn" @click="controls.target.set(0,1,0); camera.position.set(15,12,18)" title="全景视图">
           <span>🌐</span>
+        </button>
+        <button :class="['nav-btn', 'move-btn', { active: moveMode }]" @click="moveMode = !moveMode" title="移动文件">
+          <span>✋</span>
         </button>
       </div>
     </div>
@@ -628,10 +902,18 @@ onUnmounted(() => {
         <div class="file-info-name">{{ selectedFile.name }}</div>
         <div class="file-info-meta">{{ selectedFile.ext }} · {{ selectedFile.size }}</div>
         <div class="file-info-desc">{{ selectedFile.description }}</div>
+        <div class="file-info-actions">
+          <button class="customize-btn" @click.stop="showCustomize = true">
+            <span>🎨</span> 自定义外观
+          </button>
+        </div>
       </div>
 
       <!-- 操作提示 -->
-      <div class="hint">🖱 点击选择文件 · 拖拽旋转 · 滚轮缩放</div>
+      <div class="hint">
+        {{ moveMode ? '✋ 点击文件并拖拽移动位置' : '🖱 点击选择文件 · 拖拽旋转 · 滚轮缩放' }}
+      </div>
+      <div v-if="moveMode" class="move-indicator">移动模式已开启</div>
     </div>
 
     <!-- AI 侧边栏 -->
@@ -718,6 +1000,55 @@ onUnmounted(() => {
         </div>
       </div>
     </transition>
+
+    <!-- 搜索结果显示 -->
+    <div v-if="searchQuery && getFilteredFiles().length > 0" class="search-result-count">
+      找到 {{ getFilteredFiles().length }} 个文件
+    </div>
+    <div v-if="searchQuery && getFilteredFiles().length === 0" class="search-result-count no-result">
+      未找到匹配文件
+    </div>
+
+    <!-- 自定义外观弹窗 -->
+    <transition name="fade">
+      <div v-if="showCustomize && selectedFile" class="customize-overlay" @click.self="closeCustomize">
+        <div class="customize-modal">
+          <div class="customize-header">
+            <span>🎨 自定义外观</span>
+            <button class="preview-close" @click="closeCustomize">✕</button>
+          </div>
+          <div class="customize-body">
+            <div class="customize-section">
+              <div class="customize-label">选择形状</div>
+              <div class="shape-grid">
+                <button v-for="shape in shapeOptions" :key="shape"
+                  :class="['shape-btn', { active: selectedFile?.userShape === shape }]"
+                  @click="selectedFile && changeShape(selectedFile, shape)">
+                  <span class="shape-icon">
+                    {{ shape === 'box' ? '📦' : shape === 'sphere' ? '⚪' : shape === 'cylinder' ? '🥫' : shape === 'cone' ? '🔺' : shape === 'torus' ? '🍩' : '🔮' }}
+                  </span>
+                  <span>{{ shape }}</span>
+                </button>
+              </div>
+            </div>
+            <div class="customize-section">
+              <div class="customize-label">选择颜色</div>
+              <div class="color-grid">
+                <button v-for="c in colorOptions" :key="c.hex"
+                  :class="['color-btn', { active: selectedFile?.userColor === c.hex }]"
+                  :style="{ background: c.hex }"
+                  @click="selectedFile && changeColor(selectedFile, c.hex)"
+                  :title="c.name">
+                </button>
+              </div>
+            </div>
+            <button class="reset-btn" @click="resetAppearance" v-if="selectedFile?.userShape || selectedFile?.userColor">
+              🔄 重置为默认外观
+            </button>
+          </div>
+        </div>
+      </div>
+    </transition>
   </div>
 </template>
 
@@ -789,6 +1120,33 @@ onUnmounted(() => {
 .nav-btn {
   padding: 8px 12px;
   font-size: 16px;
+}
+
+.move-btn { transition: all 0.2s; }
+.move-btn.active {
+  background: rgba(79,195,247,0.2);
+  border-color: #4fc3f7;
+  box-shadow: 0 0 12px rgba(79,195,247,0.2);
+}
+
+.move-indicator {
+  position: absolute;
+  top: 120px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 5;
+  background: rgba(79,195,247,0.15);
+  border: 1px solid rgba(79,195,247,0.3);
+  border-radius: 8px;
+  padding: 4px 14px;
+  color: #4fc3f7;
+  font-size: 12px;
+  animation: pulse-indicator 2s infinite;
+}
+
+@keyframes pulse-indicator {
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 1; }
 }
 
 .three-container {
@@ -1176,4 +1534,206 @@ onUnmounted(() => {
 /* 过渡动画 */
 .fade-enter-active, .fade-leave-active { transition: opacity 0.25s ease; }
 .fade-enter-from, .fade-leave-to { opacity: 0; }
+
+/* ==================== 搜索栏 ==================== */
+.search-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 10px;
+  padding: 6px 12px;
+  width: 260px;
+  transition: all 0.2s;
+}
+
+.search-bar:focus-within {
+  border-color: rgba(79,195,247,0.4);
+  background: rgba(255,255,255,0.08);
+}
+
+.search-icon { font-size: 14px; opacity: 0.5; }
+
+.search-bar input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  color: #fff;
+  font-size: 13px;
+  outline: none;
+}
+.search-bar input::placeholder { color: rgba(255,255,255,0.3); }
+
+.search-clear {
+  border: none;
+  background: rgba(255,255,255,0.1);
+  color: #fff;
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  font-size: 11px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.search-result-count {
+  position: absolute;
+  top: 60px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 5;
+  background: rgba(10,10,26,0.8);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px;
+  padding: 6px 16px;
+  color: #4fc3f7;
+  font-size: 13px;
+}
+.search-result-count.no-result { color: #e57373; }
+
+/* ==================== 文件信息按钮 ==================== */
+.file-info-actions {
+  margin-top: 10px;
+  display: flex;
+  justify-content: center;
+}
+
+.customize-btn {
+  padding: 6px 16px;
+  border: 1px solid rgba(79,195,247,0.3);
+  border-radius: 8px;
+  background: rgba(79,195,247,0.1);
+  color: #4fc3f7;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.2s;
+}
+
+.customize-btn:hover {
+  background: rgba(79,195,247,0.2);
+  border-color: rgba(79,195,247,0.6);
+}
+
+/* ==================== 自定义弹窗 ==================== */
+.customize-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.5);
+  backdrop-filter: blur(6px);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.customize-modal {
+  width: 420px;
+  max-width: 90vw;
+  background: rgba(15,15,35,0.95);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+}
+
+.customize-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  color: #fff;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.customize-body {
+  padding: 20px;
+}
+
+.customize-section {
+  margin-bottom: 20px;
+}
+
+.customize-label {
+  color: rgba(255,255,255,0.5);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 10px;
+}
+
+.shape-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.shape-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 12px 8px;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 12px;
+  background: rgba(255,255,255,0.03);
+  color: rgba(255,255,255,0.6);
+  cursor: pointer;
+  font-size: 11px;
+  transition: all 0.2s;
+}
+
+.shape-btn:hover {
+  background: rgba(255,255,255,0.08);
+  border-color: rgba(255,255,255,0.2);
+  color: #fff;
+}
+
+.shape-btn.active {
+  border-color: #4fc3f7;
+  background: rgba(79,195,247,0.12);
+  color: #4fc3f7;
+}
+
+.shape-icon { font-size: 24px; }
+
+.color-grid {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.color-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.color-btn:hover { transform: scale(1.15); }
+.color-btn.active { border-color: #fff; box-shadow: 0 0 12px rgba(255,255,255,0.2); }
+
+.reset-btn {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 10px;
+  background: rgba(255,255,255,0.04);
+  color: rgba(255,255,255,0.6);
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.2s;
+}
+
+.reset-btn:hover {
+  background: rgba(255,255,255,0.08);
+  color: #fff;
+}
 </style>
