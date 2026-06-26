@@ -73,4 +73,7 @@ export const stickerList: StickerData[] = [
   // { id: 'util-6', text: '走心短句', category: '素材', color: '#FFDAB9', emoji: '💫', tagColor: '#F0A07C' },
 
    { id: 'beautiful-1', text: '好看的', category: '好看的', color: '#FFDAB9', emoji: '✅', tagColor: '#F0A07C' },
+
+   { id: 'tool-1', text: '工具', category: '工具', color: '#FFDAB9', emoji: '🔧', tagColor: '#e2c1b2ff' },
+
 ]

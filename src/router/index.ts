@@ -12,6 +12,8 @@ import LazyDownView from '@/views/LazyDownView.vue'
 import QixiView from '@/views/QixiView.vue'
 import CrazyTypingView from '@/views/CrazyTypingView.vue'
 import CounterView from '@/views/CounterView.vue'
+import LoginView from '@/views/LoginView.vue'
+import DashboardView from '@/views/DashboardView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -80,6 +82,16 @@ const router = createRouter({
       path: '/counter',
       name: 'counter',
       component: CounterView
+    },
+    {
+      path: '/login',
+      name: 'login',
+      component: LoginView
+    },
+    {
+      path: '/dashboard',
+      name: 'dashboard',
+      component: DashboardView
     }
   ]
 })

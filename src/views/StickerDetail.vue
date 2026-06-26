@@ -18,6 +18,7 @@ const isLazyDown = ref(false)
 const isQixi = ref(false)
 const isCrazyTyping = ref(false)
 const isCounter = ref(false)
+const isLogin = ref(false)
 const isBeautiful = ref(false)
 
 onMounted(() => {
@@ -76,6 +77,10 @@ onMounted(() => {
   if (id === 'fun-5') {
     isCounter.value = true
   }
+  // 判断是否为工具（登录页面）
+  if (id === 'tool-1') {
+    isLogin.value = true
+  }
   // 判断是否为好看的
   if (id.startsWith('beautiful-')) {
     isBeautiful.value = true
@@ -112,6 +117,8 @@ function onSaveClick() {
     router.push('/crazy-typing')
   } else if (isCounter.value) {
     router.push('/counter')
+  } else if (isLogin.value) {
+    router.push('/login')
   } else if (isBirthday.value) {
     router.push('/birthday-cake')
   } else if (isBeautiful.value) {
@@ -147,7 +154,7 @@ function onSaveClick() {
       <div class="icons">
         <button
           class="play-btn"
-          :class="{ 'confession-btn': isConfession, 'birthday-btn': isBirthday || isBirthdayCard || isBirthdayPrank || isGiftBox, 'beautiful-btn': isBeautiful, 'firework-btn': isFirework, 'lazy-btn': isLazyDown, 'qixi-btn': isQixi, 'crazy-btn': isCrazyTyping, 'counter-btn': isCounter }"
+          :class="{ 'confession-btn': isConfession, 'birthday-btn': isBirthday || isBirthdayCard || isBirthdayPrank || isGiftBox, 'beautiful-btn': isBeautiful, 'firework-btn': isFirework, 'lazy-btn': isLazyDown, 'qixi-btn': isQixi, 'crazy-btn': isCrazyTyping, 'counter-btn': isCounter, 'login-btn': isLogin }"
           @click="onSaveClick"
         >
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 36" width="36px" height="36px">
@@ -694,6 +701,23 @@ function onSaveClick() {
 @keyframes counterGlow {
   0%, 100% { box-shadow: 0 0 8px rgba(0, 230, 118, 0.3); }
   50% { box-shadow: 0 0 20px rgba(0, 230, 118, 0.6); }
+}
+
+/* 工具按钮样式 */
+.login-btn {
+  background: linear-gradient(135deg, #6041bf 0%, #8e6fd4 100%) !important;
+  border-color: #6041bf !important;
+  color: #fff !important;
+  animation: loginGlow 2s ease-in-out infinite;
+}
+
+.login-btn:hover {
+  box-shadow: 0 0 24px rgba(96, 65, 191, 0.5);
+}
+
+@keyframes loginGlow {
+  0%, 100% { box-shadow: 0 0 8px rgba(96, 65, 191, 0.3); }
+  50% { box-shadow: 0 0 20px rgba(96, 65, 191, 0.6); }
 }
 /* From Uiverse.io by amir_6539 */ 
 .container {

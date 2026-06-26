@@ -11,8 +11,6 @@ let msgId = 0
 let spawnInterval: ReturnType<typeof setInterval> | null = null
 let shakeInterval: ReturnType<typeof setInterval> | null = null
 let longPressTimer: ReturnType<typeof setInterval> | null = null
-let isPressing = false
-
 const crazyTexts = [
   '啊啊啊啊啊啊啊！！！',
   '精神状态良好😇',
@@ -95,7 +93,6 @@ function spawnMessage() {
 
 function startLongPress() {
   if (isClosing.value) return
-  isPressing = true
   longPressProgress.value = 0
 
   longPressTimer = setInterval(() => {
@@ -108,7 +105,6 @@ function startLongPress() {
 }
 
 function cancelLongPress() {
-  isPressing = false
   if (longPressTimer) {
     clearInterval(longPressTimer)
     longPressTimer = null
