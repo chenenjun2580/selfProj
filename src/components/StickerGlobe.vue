@@ -40,7 +40,6 @@ let searchAnimCamTarget: THREE.Vector3 | null = null
 let searchAnimTargetOriginalPos: THREE.Vector3 | null = null
 let searchAnimTargetNormal: THREE.Vector3 | null = null
 let searchAnimTargetOriginalScale: THREE.Vector3 | null = null
-let searchAnimTargetOriginalOpacity = 0
 
 const SPHERE_RADIUS = 4.5
 const STICKER_W = 0.7
@@ -183,15 +182,12 @@ function createStickerTexture(data: StickerData): THREE.CanvasTexture {
 
 function createStickerMesh(data: StickerData, position: THREE.Vector3): THREE.Mesh {
   const texture = createStickerTexture(data)
-  // 随机不透明度 0.82 ~ 0.98，让便利贴有自然的层次感
-  const randomOpacity = 0.82 + Math.random() * 0.16
   const material = new THREE.MeshStandardMaterial({
     map: texture,
     side: THREE.DoubleSide,
     roughness: 0.55,
     metalness: 0.02,
-    transparent: true,
-    opacity: randomOpacity,
+    transparent: false,
     depthWrite: true,
   })
 
@@ -508,7 +504,6 @@ function searchSticker(keyword: string) {
   searchAnimTargetOriginalPos = pos.clone()
   searchAnimTargetNormal = normal.clone()
   searchAnimTargetOriginalScale = targetMesh.scale.clone()
-  searchAnimTargetOriginalOpacity = (targetMesh.material as THREE.MeshStandardMaterial).opacity
 
   // 暂停自动旋转
   controls.autoRotate = false
@@ -522,7 +517,6 @@ function cancelSearchAnim() {
     if (userData.originalPosition) {
       searchAnimTarget.position.copy(userData.originalPosition)
     }
-    ;(searchAnimTarget.material as THREE.MeshStandardMaterial).opacity = searchAnimTargetOriginalOpacity || 1
     ;(searchAnimTarget.material as THREE.MeshStandardMaterial).emissive.set('#000000')
     ;(searchAnimTarget.material as THREE.MeshStandardMaterial).emissiveIntensity = 0
 
@@ -590,9 +584,8 @@ function updateSearchAnim(now: number) {
     const s = fromScale + (toScale - fromScale) * t
     searchAnimTarget.scale.set(s, s, s)
 
-    // 增加不透明度，让它更突出
+    // 增加发光，让它更突出
     const mat = searchAnimTarget.material as THREE.MeshStandardMaterial
-    mat.opacity = Math.min(1, (searchAnimTargetOriginalOpacity || 0.9) + t * 0.15)
     mat.emissiveIntensity = 0.45
 
     if (t >= 1) {
@@ -621,9 +614,8 @@ function updateSearchAnim(now: number) {
     const s = fromScale + (toScale - fromScale) * t
     searchAnimTarget.scale.set(s, s, s)
 
-    // 恢复不透明度
+    // 恢复发光
     const mat = searchAnimTarget.material as THREE.MeshStandardMaterial
-    mat.opacity = (searchAnimTargetOriginalOpacity || 0.9) + (1 - t) * 0.1
     mat.emissiveIntensity = 0.45 * (1 - t)
 
     // 恢复位置
@@ -641,7 +633,6 @@ function updateSearchAnim(now: number) {
         searchAnimTarget.position.copy(searchAnimTargetOriginalPos)
       }
       searchAnimTarget.scale.set(1, 1, 1)
-      mat.opacity = searchAnimTargetOriginalOpacity || 0.9
       mat.emissive.set('#000000')
       mat.emissiveIntensity = 0
 
