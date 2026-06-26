@@ -6,6 +6,11 @@ import KeyboardPopup from './KeyboardPopup.vue'
 import CubePopup from './CubePopup.vue'
 import SunPopup from './SunPopup.vue'
 import BearPopup from './BearPopup.vue'
+import CoffeePopup from './CoffeePopup.vue'
+import SwitchPopup from './SwitchPopup.vue'
+import CameraPopup from './CameraPopup.vue'
+import NeonPopup from './NeonPopup.vue'
+import CubeRotatePopup from './CubeRotatePopup.vue'
 
 const router = useRouter()
 
@@ -16,11 +21,11 @@ const colors = [
   { hex: '#fb923c', name: '方块', desc: '温暖活力的日落橙' },
   { hex: '#facc15', name: '太阳', desc: '明亮欢快的阳光黄' },
   { hex: '#84cc16', name: '小熊', desc: '生机盎然的青草绿' },
-  { hex: '#10b981', name: '青', desc: '清新自然的翡翠青' },
-  { hex: '#0ea5e9', name: '蓝', desc: '广阔自由的天空蓝' },
-  { hex: '#3b82f6', name: '靛', desc: '深邃沉稳的宝石靛' },
-  { hex: '#8b5cf6', name: '紫', desc: '神秘优雅的薰衣草紫' },
-  { hex: '#a78bfa', name: '雪', desc: '温柔梦幻的薄雾雪' },
+  { hex: '#10b981', name: '咖啡', desc: '清新自然的翡翠青' },
+  { hex: '#0ea5e9', name: '手柄', desc: '广阔自由的天空蓝' },
+  { hex: '#3b82f6', name: '相机', desc: '深邃沉稳的宝石靛' },
+  { hex: '#8b5cf6', name: '卡片', desc: '神秘优雅的薰衣草紫' },
+  { hex: '#a78bfa', name: '立方体', desc: '温柔梦幻的薄雾雪' },
 ]
 
 // 弹窗状态
@@ -135,6 +140,41 @@ onMounted(() => {
         <!-- 第五个颜色：小熊组件 -->
         <BearPopup
           v-if="popupColor && popupColor.hex === '#84cc16'"
+          :visible="popupVisible"
+          @close="closePopup"
+        />
+
+        <!-- 第六个颜色：咖啡组件 -->
+        <CoffeePopup
+          v-if="popupColor && popupColor.hex === '#10b981'"
+          :visible="popupVisible"
+          @close="closePopup"
+        />
+
+        <!-- 第七个颜色：手柄组件 -->
+        <SwitchPopup
+          v-if="popupColor && popupColor.hex === '#0ea5e9'"
+          :visible="popupVisible"
+          @close="closePopup"
+        />
+
+        <!-- 第八个颜色：相机组件 -->
+        <CameraPopup
+          v-if="popupColor && popupColor.hex === '#3b82f6'"
+          :visible="popupVisible"
+          @close="closePopup"
+        />
+
+        <!-- 第九个颜色：卡片组件 -->
+        <NeonPopup
+          v-if="popupColor && popupColor.hex === '#8b5cf6'"
+          :visible="popupVisible"
+          @close="closePopup"
+        />
+
+        <!-- 第十个颜色：旋转立方体组件 -->
+        <CubeRotatePopup
+          v-if="popupColor && popupColor.hex === '#a78bfa'"
           :visible="popupVisible"
           @close="closePopup"
         />
