@@ -5,6 +5,7 @@ import TruckPopup from './TruckPopup.vue'
 import KeyboardPopup from './KeyboardPopup.vue'
 import CubePopup from './CubePopup.vue'
 import SunPopup from './SunPopup.vue'
+import BearPopup from './BearPopup.vue'
 
 const router = useRouter()
 
@@ -14,7 +15,7 @@ const colors = [
   { hex: '#f472b6', name: '键盘', desc: '少女心爆棚的樱花粉' },
   { hex: '#fb923c', name: '方块', desc: '温暖活力的日落橙' },
   { hex: '#facc15', name: '太阳', desc: '明亮欢快的阳光黄' },
-  { hex: '#84cc16', name: '绿', desc: '生机盎然的青草绿' },
+  { hex: '#84cc16', name: '小熊', desc: '生机盎然的青草绿' },
   { hex: '#10b981', name: '青', desc: '清新自然的翡翠青' },
   { hex: '#0ea5e9', name: '蓝', desc: '广阔自由的天空蓝' },
   { hex: '#3b82f6', name: '靛', desc: '深邃沉稳的宝石靛' },
@@ -127,6 +128,13 @@ onMounted(() => {
         <!-- 第四个颜色：太阳组件 -->
         <SunPopup
           v-if="popupColor && popupColor.hex === '#facc15'"
+          :visible="popupVisible"
+          @close="closePopup"
+        />
+
+        <!-- 第五个颜色：小熊组件 -->
+        <BearPopup
+          v-if="popupColor && popupColor.hex === '#84cc16'"
           :visible="popupVisible"
           @close="closePopup"
         />
