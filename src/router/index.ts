@@ -9,6 +9,8 @@ import BirthdayPrankView from '@/views/BirthdayPrankView.vue'
 import GiftBoxView from '@/views/GiftBoxView.vue'
 import FireworkView from '@/views/FireworkView.vue'
 import LazyDownView from '@/views/LazyDownView.vue'
+import QixiView from '@/views/QixiView.vue'
+import CrazyTypingView from '@/views/CrazyTypingView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -62,6 +64,16 @@ const router = createRouter({
       path: '/lazy-down',
       name: 'lazy-down',
       component: LazyDownView
+    },
+    {
+      path: '/qixi',
+      name: 'qixi',
+      component: QixiView
+    },
+    {
+      path: '/crazy-typing',
+      name: 'crazy-typing',
+      component: CrazyTypingView
     }
   ]
 })

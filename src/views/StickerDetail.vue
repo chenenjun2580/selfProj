@@ -15,6 +15,8 @@ const isBirthdayPrank = ref(false)
 const isGiftBox = ref(false)
 const isFirework = ref(false)
 const isLazyDown = ref(false)
+const isQixi = ref(false)
+const isCrazyTyping = ref(false)
 const isBeautiful = ref(false)
 
 onMounted(() => {
@@ -61,6 +63,14 @@ onMounted(() => {
   if (id === 'fun-3') {
     isLazyDown.value = true
   }
+  // 判断是否为七夕鹊桥相会
+  if (id === 'fest-4') {
+    isQixi.value = true
+  }
+  // 判断是否为疯狂打字机（发疯文学）
+  if (id === 'fun-4') {
+    isCrazyTyping.value = true
+  }
   // 判断是否为好看的
   if (id.startsWith('beautiful-')) {
     isBeautiful.value = true
@@ -91,6 +101,10 @@ function onSaveClick() {
     router.push('/firework')
   } else if (isLazyDown.value) {
     router.push('/lazy-down')
+  } else if (isQixi.value) {
+    router.push('/qixi')
+  } else if (isCrazyTyping.value) {
+    router.push('/crazy-typing')
   } else if (isBirthday.value) {
     router.push('/birthday-cake')
   } else if (isBeautiful.value) {
@@ -126,7 +140,7 @@ function onSaveClick() {
       <div class="icons">
         <button
           class="play-btn"
-          :class="{ 'confession-btn': isConfession, 'birthday-btn': isBirthday || isBirthdayCard || isBirthdayPrank || isGiftBox, 'beautiful-btn': isBeautiful, 'firework-btn': isFirework, 'lazy-btn': isLazyDown }"
+          :class="{ 'confession-btn': isConfession, 'birthday-btn': isBirthday || isBirthdayCard || isBirthdayPrank || isGiftBox, 'beautiful-btn': isBeautiful, 'firework-btn': isFirework, 'lazy-btn': isLazyDown, 'qixi-btn': isQixi, 'crazy-btn': isCrazyTyping }"
           @click="onSaveClick"
         >
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 36" width="36px" height="36px">
@@ -622,6 +636,40 @@ function onSaveClick() {
 @keyframes beautifulGlow {
   0%, 100% { box-shadow: 0 0 8px rgba(161, 140, 209, 0.3); }
   50% { box-shadow: 0 0 20px rgba(161, 140, 209, 0.6); }
+}
+
+/* 七夕按钮样式 */
+.qixi-btn {
+  background: linear-gradient(135deg, #9c27b0 0%, #e91e63 100%) !important;
+  border-color: #e91e63 !important;
+  color: #fff !important;
+  animation: qixiGlow 2s ease-in-out infinite;
+}
+
+.qixi-btn:hover {
+  box-shadow: 0 0 24px rgba(233, 30, 99, 0.5);
+}
+
+@keyframes qixiGlow {
+  0%, 100% { box-shadow: 0 0 8px rgba(233, 30, 99, 0.3); }
+  50% { box-shadow: 0 0 20px rgba(233, 30, 99, 0.6); }
+}
+
+/* 疯狂打字机按钮样式 */
+.crazy-btn {
+  background: linear-gradient(135deg, #FF1744 0%, #FF6D00 100%) !important;
+  border-color: #FF1744 !important;
+  color: #fff !important;
+  animation: crazyGlow 1.5s ease-in-out infinite;
+}
+
+.crazy-btn:hover {
+  box-shadow: 0 0 24px rgba(255, 23, 68, 0.5);
+}
+
+@keyframes crazyGlow {
+  0%, 100% { box-shadow: 0 0 8px rgba(255, 23, 68, 0.3); }
+  50% { box-shadow: 0 0 20px rgba(255, 23, 68, 0.6); }
 }
 /* From Uiverse.io by amir_6539 */ 
 .container {
