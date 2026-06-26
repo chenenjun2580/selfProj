@@ -6,6 +6,8 @@ import BirthdayCakeView from '@/views/BirthdayCakeView.vue'
 import BirthdayCardView from '@/views/BirthdayCardView.vue'
 import BeautifulView from '@/views/BeautifulView.vue'
 import BirthdayPrankView from '@/views/BirthdayPrankView.vue'
+import GiftBoxView from '@/views/GiftBoxView.vue'
+import FireworkView from '@/views/FireworkView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -44,6 +46,16 @@ const router = createRouter({
       path: '/birthday-prank',
       name: 'birthday-prank',
       component: BirthdayPrankView
+    },
+    {
+      path: '/gift-box',
+      name: 'gift-box',
+      component: GiftBoxView
+    },
+    {
+      path: '/firework',
+      name: 'firework',
+      component: FireworkView
     }
   ]
 })

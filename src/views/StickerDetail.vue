@@ -12,6 +12,8 @@ const isConfession = ref(false)
 const isBirthday = ref(false)
 const isBirthdayCard = ref(false)
 const isBirthdayPrank = ref(false)
+const isGiftBox = ref(false)
+const isFirework = ref(false)
 const isBeautiful = ref(false)
 
 onMounted(() => {
@@ -42,9 +44,17 @@ onMounted(() => {
   if (id === 'birthday-6') {
     isBirthdayPrank.value = true
   }
+  // 判断是否为礼物盲盒（周岁纪念、礼物文案）
+  if (id === 'birthday-2' || id === 'birthday-8') {
+    isGiftBox.value = true
+  }
   // 判断是否为生日系列（蛋糕吹蜡烛）
-  if (id.startsWith('birthday-') && id !== 'birthday-3' && id !== 'birthday-6') {
+  if (id.startsWith('birthday-') && id !== 'birthday-3' && id !== 'birthday-6' && id !== 'birthday-2' && id !== 'birthday-8') {
     isBirthday.value = true
+  }
+  // 判断是否为烟花秀（节日祝福）
+  if (id === 'bless-9') {
+    isFirework.value = true
   }
   // 判断是否为好看的
   if (id.startsWith('beautiful-')) {
@@ -70,6 +80,10 @@ function onSaveClick() {
     router.push('/birthday-card')
   } else if (isBirthdayPrank.value) {
     router.push('/birthday-prank')
+  } else if (isGiftBox.value) {
+    router.push('/gift-box')
+  } else if (isFirework.value) {
+    router.push('/firework')
   } else if (isBirthday.value) {
     router.push('/birthday-cake')
   } else if (isBeautiful.value) {
@@ -105,7 +119,7 @@ function onSaveClick() {
       <div class="icons">
         <button
           class="play-btn"
-          :class="{ 'confession-btn': isConfession, 'birthday-btn': isBirthday || isBirthdayCard || isBirthdayPrank, 'beautiful-btn': isBeautiful }"
+          :class="{ 'confession-btn': isConfession, 'birthday-btn': isBirthday || isBirthdayCard || isBirthdayPrank || isGiftBox, 'beautiful-btn': isBeautiful, 'firework-btn': isFirework }"
           @click="onSaveClick"
         >
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 36" width="36px" height="36px">
