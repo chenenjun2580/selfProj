@@ -17,6 +17,7 @@ const isFirework = ref(false)
 const isLazyDown = ref(false)
 const isQixi = ref(false)
 const isCrazyTyping = ref(false)
+const isCounter = ref(false)
 const isBeautiful = ref(false)
 
 onMounted(() => {
@@ -71,6 +72,10 @@ onMounted(() => {
   if (id === 'fun-4') {
     isCrazyTyping.value = true
   }
+  // 判断是否为整活计数器（趣味整活）
+  if (id === 'fun-5') {
+    isCounter.value = true
+  }
   // 判断是否为好看的
   if (id.startsWith('beautiful-')) {
     isBeautiful.value = true
@@ -105,6 +110,8 @@ function onSaveClick() {
     router.push('/qixi')
   } else if (isCrazyTyping.value) {
     router.push('/crazy-typing')
+  } else if (isCounter.value) {
+    router.push('/counter')
   } else if (isBirthday.value) {
     router.push('/birthday-cake')
   } else if (isBeautiful.value) {
@@ -140,7 +147,7 @@ function onSaveClick() {
       <div class="icons">
         <button
           class="play-btn"
-          :class="{ 'confession-btn': isConfession, 'birthday-btn': isBirthday || isBirthdayCard || isBirthdayPrank || isGiftBox, 'beautiful-btn': isBeautiful, 'firework-btn': isFirework, 'lazy-btn': isLazyDown, 'qixi-btn': isQixi, 'crazy-btn': isCrazyTyping }"
+          :class="{ 'confession-btn': isConfession, 'birthday-btn': isBirthday || isBirthdayCard || isBirthdayPrank || isGiftBox, 'beautiful-btn': isBeautiful, 'firework-btn': isFirework, 'lazy-btn': isLazyDown, 'qixi-btn': isQixi, 'crazy-btn': isCrazyTyping, 'counter-btn': isCounter }"
           @click="onSaveClick"
         >
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 36" width="36px" height="36px">
@@ -670,6 +677,23 @@ function onSaveClick() {
 @keyframes crazyGlow {
   0%, 100% { box-shadow: 0 0 8px rgba(255, 23, 68, 0.3); }
   50% { box-shadow: 0 0 20px rgba(255, 23, 68, 0.6); }
+}
+
+/* 计数器按钮样式 */
+.counter-btn {
+  background: linear-gradient(135deg, #00E676 0%, #00B0FF 100%) !important;
+  border-color: #00E676 !important;
+  color: #fff !important;
+  animation: counterGlow 2s ease-in-out infinite;
+}
+
+.counter-btn:hover {
+  box-shadow: 0 0 24px rgba(0, 230, 118, 0.5);
+}
+
+@keyframes counterGlow {
+  0%, 100% { box-shadow: 0 0 8px rgba(0, 230, 118, 0.3); }
+  50% { box-shadow: 0 0 20px rgba(0, 230, 118, 0.6); }
 }
 /* From Uiverse.io by amir_6539 */ 
 .container {

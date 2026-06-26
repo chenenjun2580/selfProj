@@ -11,6 +11,7 @@ import FireworkView from '@/views/FireworkView.vue'
 import LazyDownView from '@/views/LazyDownView.vue'
 import QixiView from '@/views/QixiView.vue'
 import CrazyTypingView from '@/views/CrazyTypingView.vue'
+import CounterView from '@/views/CounterView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -74,6 +75,11 @@ const router = createRouter({
       path: '/crazy-typing',
       name: 'crazy-typing',
       component: CrazyTypingView
+    },
+    {
+      path: '/counter',
+      name: 'counter',
+      component: CounterView
     }
   ]
 })
