@@ -15,6 +15,7 @@ import CounterView from '@/views/CounterView.vue'
 import LoginView from '@/views/LoginView.vue'
 import DashboardView from '@/views/DashboardView.vue'
 import FileSpace3DView from '@/views/FileSpace3DView.vue'
+import LoveImagesView from '@/views/LoveImagesView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -98,6 +99,11 @@ const router = createRouter({
       path: '/file-space-3d',
       name: 'file-space-3d',
       component: FileSpace3DView
+    },
+    {
+      path: '/love-images',
+      name: 'love-images',
+      component: LoveImagesView
     }
   ]
 })

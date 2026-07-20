@@ -21,6 +21,11 @@ function onZoom(distance: number) {
 }
 
 function onSearch(keyword: string) {
+  // 隐形跳转口令：输入 AAA 直接跳转到告白页面
+  if (keyword.trim().toUpperCase() === 'AAA') {
+    router.push('/love-images')
+    return
+  }
   globeRef.value?.searchSticker(keyword)
 }
 
