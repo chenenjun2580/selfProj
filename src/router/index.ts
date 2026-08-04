@@ -16,6 +16,7 @@ import LoginView from '@/views/LoginView.vue'
 import DashboardView from '@/views/DashboardView.vue'
 import FileSpace3DView from '@/views/FileSpace3DView.vue'
 import LoveImagesView from '@/views/LoveImagesView.vue'
+import XiaXinyiView from '@/views/XiaXinyiView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -104,6 +105,11 @@ const router = createRouter({
       path: '/love-images',
       name: 'love-images',
       component: LoveImagesView
+    },
+    {
+      path: '/xia-xinyi',
+      name: 'xia-xinyi',
+      component: XiaXinyiView
     }
   ]
 })

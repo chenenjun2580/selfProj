@@ -21,9 +21,14 @@ function onZoom(distance: number) {
 }
 
 function onSearch(keyword: string) {
-  // 隐形跳转口令：输入 AAA 直接跳转到告白页面
-  if (keyword.trim().toUpperCase() === 'AAA') {
+  // 隐形跳转口令：AAA 跳通用告白页，夏馨怡 跳专属告白页
+  const kw = keyword.trim().toUpperCase()
+  if (kw === '冯若兮宝宝') {
     router.push('/love-images')
+    return
+  }
+  if (kw === '夏馨怡') {
+    router.push('/xia-xinyi')
     return
   }
   globeRef.value?.searchSticker(keyword)
